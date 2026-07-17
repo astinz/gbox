@@ -6,9 +6,11 @@ These rules apply to the entire repository.
 
 ## File Size
 
-- Every text file created or modified in this repository must remain below 1,000 lines. The maximum permitted length is 999 lines, including comments and blank lines.
-- Check file length before finishing a change. If a file approaches the limit, split it into focused modules instead of compressing or obscuring the code.
-- Do not create "god files" that combine unrelated responsibilities, even when they are below the line limit.
+- Every human-authored source code file created or modified in this repository must remain below 1,000 lines. The maximum permitted length is 999 lines, including comments and blank lines.
+- The limit applies to application code, tests, scripts, and other files containing code maintained by this project.
+- The limit does not apply to generated build output, dependency lockfiles such as `package-lock.json`, generated code, vendored third-party code, binary assets, or tool-managed metadata.
+- Check source file length before finishing a change. If a source file approaches the limit, split it into focused modules instead of compressing or obscuring the code.
+- Do not create "god files" that combine unrelated source-code responsibilities, even when they are below the line limit.
 
 ## Separation of Concerns
 
@@ -28,7 +30,7 @@ These rules apply to the entire repository.
 
 Before completing a change:
 
-1. Confirm that every created or modified text file is fewer than 1,000 lines.
-2. Confirm that no file has become a god file or mixes unrelated concerns.
+1. Confirm that every created or modified human-authored source code file is fewer than 1,000 lines.
+2. Confirm that no source file has become a god file or mixes unrelated concerns.
 3. Confirm that no Go or `gofmt` files were introduced.
 4. Run the relevant formatter, checks, and tests when available.
