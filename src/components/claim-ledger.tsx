@@ -1,81 +1,95 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { CheckIcon, CircleHelpIcon, XIcon } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ClaimDetail } from "@/components/claim-detail";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import type { Claim, ClaimState, Evidence } from "@/types/gbox";
+import type { Claim, ClaimState, Evidence, VerificationFailure } from "@/types/gbox";
 
-type Props = { claims: Claim[]; evidence: Evidence[] };
+type Props = { claims: Claim[]; evidence: Evidence[]; failures: VerificationFailure[] };
 type Filter = "All" | ClaimState;
 
 const filters: Filter[] = ["All", "Verified", "Contradicted", "Unverifiable"];
 
-export function ClaimLedger({ claims, evidence }: Props) {
+export function ClaimLedger({ claims, evidence, failures }: Props) {
   const [filter, setFilter] = useState<Filter>("All");
+  const [selectedId, setSelectedId] = useState<string>();
   const visible = useMemo(
     () => claims.filter((claim) => filter === "All" || claim.state === filter),
     [claims, filter],
   );
+  const selected = visible.find((claim) => claim.id === selectedId) ?? visible[0];
+
+  useEffect(() => {
+    if (selected && selected.id !== selectedId) setSelectedId(selected.id);
+  }, [selected, selectedId]);
 
   return (
-    <div className="panel-surface">
-      <div className="panel-toolbar">
-        <div>
-          <p className="eyebrow">Evidence ledger</p>
-          <h2 className="panel-title">Claims</h2>
+    <div className="verification-workbench">
+      <div className="panel-surface claim-index">
+        <div className="panel-toolbar">
+          <div>
+            <p className="eyebrow">Evidence ledger</p>
+            <h2 className="panel-title">Claims</h2>
+          </div>
+          <div className="flex flex-wrap gap-1" aria-label="Claim state filters">
+            {filters.map((item) => (
+              <Button key={item} size="sm" variant={filter === item ? "secondary" : "ghost"} onClick={() => setFilter(item)}>
+                {item}
+              </Button>
+            ))}
+          </div>
         </div>
-        <div className="flex flex-wrap gap-1" aria-label="Claim state filters">
-          {filters.map((item) => (
-            <Button key={item} size="sm" variant={filter === item ? "secondary" : "ghost"} onClick={() => setFilter(item)}>
-              {item}
-            </Button>
-          ))}
-        </div>
+        {visible.length === 0 ? (
+          <Empty className="min-h-72">
+            <EmptyHeader>
+              <EmptyMedia variant="icon"><CircleHelpIcon /></EmptyMedia>
+              <EmptyTitle>No claims in this view</EmptyTitle>
+              <EmptyDescription>Run the replay or a live task to populate the evidence ledger.</EmptyDescription>
+            </EmptyHeader>
+          </Empty>
+        ) : (
+          <ScrollArea className="h-[620px]">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Verdict</TableHead>
+                  <TableHead>Claim</TableHead>
+                  <TableHead>Evidence</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {visible.map((claim) => {
+                  const proof = evidence.find((item) => item.claimId === claim.id);
+                  return (
+                    <TableRow key={claim.id} data-state={claim.id === selected?.id ? "selected" : undefined}>
+                      <TableCell><VerdictBadge state={claim.state} /></TableCell>
+                      <TableCell className="max-w-md">
+                        <button className="claim-select" onClick={() => setSelectedId(claim.id)}>
+                          <span>{claim.statement}</span>
+                          <small>{claim.subject ?? "?"} / {claim.predicate ?? "?"} / {claim.temporalContext ?? "timeless"}</small>
+                        </button>
+                      </TableCell>
+                      <TableCell className="font-mono text-xs">
+                        {proof ? summarizeEvidence(proof) : "No evidence"}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </ScrollArea>
+        )}
       </div>
-      {visible.length === 0 ? (
-        <Empty className="min-h-72">
-          <EmptyHeader>
-            <EmptyMedia variant="icon"><CircleHelpIcon /></EmptyMedia>
-            <EmptyTitle>No claims in this view</EmptyTitle>
-            <EmptyDescription>Run the replay or a live task to populate the evidence ledger.</EmptyDescription>
-          </EmptyHeader>
-        </Empty>
-      ) : (
-        <ScrollArea className="h-[390px]">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Verdict</TableHead>
-                <TableHead>Claim</TableHead>
-                <TableHead>Asserted</TableHead>
-                <TableHead>Authoritative</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {visible.map((claim) => {
-                const proof = evidence.find((item) => item.claimId === claim.id);
-                return (
-                  <TableRow key={claim.id}>
-                    <TableCell><VerdictBadge state={claim.state} /></TableCell>
-                    <TableCell className="max-w-md">
-                      <p className="font-medium leading-snug">{claim.statement}</p>
-                      <p className="mt-1 font-mono text-[11px] text-muted-foreground">
-                        {claim.subject ?? "?"} / {claim.predicate ?? "?"} / {claim.temporalContext ?? "timeless"}
-                      </p>
-                    </TableCell>
-                    <TableCell className="font-mono text-xs">{claim.assertedValue ?? "—"} {claim.unit ?? ""}</TableCell>
-                    <TableCell className="font-mono text-xs">
-                      {proof ? summarizeEvidence(proof) : "No evidence"}
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        </ScrollArea>
+      {selected && (
+        <ClaimDetail
+          claim={selected}
+          evidence={evidence.filter((item) => item.claimId === selected.id)}
+          failures={failures.filter((item) => item.claimId === selected.id)}
+        />
       )}
     </div>
   );

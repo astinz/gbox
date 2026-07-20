@@ -164,18 +164,20 @@ impl CodexSupervisor {
         for candidate in candidates {
             let outcome = if extraction_succeeded {
                 self.verify_claim(&candidate).await.unwrap_or_else(|error| {
-                    EvidenceOutcome::unverifiable(
+                    let mut outcome = EvidenceOutcome::unverifiable(
                         "verification-router",
                         format!("Verification failed: {error}"),
-                    )
+                    );
+                    outcome.record_failure("verification", error.to_string(), None);
+                    outcome
                 })
             } else {
-                EvidenceOutcome::unverifiable(
-                    "claim-extraction",
-                    extraction_error
-                        .clone()
-                        .unwrap_or_else(|| "Claim extraction failed".to_owned()),
-                )
+                let message = extraction_error
+                    .clone()
+                    .unwrap_or_else(|| "Claim extraction failed".to_owned());
+                let mut outcome = EvidenceOutcome::unverifiable("claim-extraction", &message);
+                outcome.record_failure("extraction", message, None);
+                outcome
             };
             let claim = self.store.upsert_claim(
                 session_id,

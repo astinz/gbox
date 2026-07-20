@@ -71,7 +71,13 @@ function Dashboard() {
           <TabsTrigger value="events">App Server <span className="tab-count">{gbox.snapshot.events.length}</span></TabsTrigger>
           <TabsTrigger value="actions">Actions & receipts <span className="tab-count">{gbox.snapshot.actions.length}</span></TabsTrigger>
         </TabsList>
-        <TabsContent value="claims"><ClaimLedger claims={gbox.snapshot.claims} evidence={gbox.snapshot.evidence} /></TabsContent>
+        <TabsContent value="claims">
+          <ClaimLedger
+            claims={gbox.snapshot.claims}
+            evidence={gbox.snapshot.evidence}
+            failures={gbox.snapshot.verificationFailures}
+          />
+        </TabsContent>
         <TabsContent value="events"><EventTimeline events={gbox.snapshot.events} /></TabsContent>
         <TabsContent value="actions"><ActionHistory actions={gbox.snapshot.actions} receipts={gbox.snapshot.receipts} /></TabsContent>
       </Tabs>

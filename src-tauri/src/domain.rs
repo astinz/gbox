@@ -128,6 +128,51 @@ pub struct CompanyMetricRecord {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct VerificationPlan {
+    pub source_type: String,
+    pub server: Option<String>,
+    pub tool: Option<String>,
+    pub arguments: Option<Value>,
+    pub query: Option<String>,
+    pub rationale: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum ComparisonMethod {
+    DeterministicAdapter,
+    ModelAssistedMcp,
+    ModelAssistedWeb,
+    NoComparison,
+}
+
+impl ComparisonMethod {
+    pub fn as_db(&self) -> &'static str {
+        match self {
+            Self::DeterministicAdapter => "deterministic_adapter",
+            Self::ModelAssistedMcp => "model_assisted_mcp",
+            Self::ModelAssistedWeb => "model_assisted_web",
+            Self::NoComparison => "no_comparison",
+        }
+    }
+}
+
+impl TryFrom<&str> for ComparisonMethod {
+    type Error = String;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        match value {
+            "deterministic_adapter" => Ok(Self::DeterministicAdapter),
+            "model_assisted_mcp" => Ok(Self::ModelAssistedMcp),
+            "model_assisted_web" => Ok(Self::ModelAssistedWeb),
+            "no_comparison" | "legacy" => Ok(Self::NoComparison),
+            other => Err(format!("unknown comparison method: {other}")),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Evidence {
     pub id: String,
     pub claim_id: String,
@@ -137,6 +182,9 @@ pub struct Evidence {
     pub content: Option<Value>,
     pub result_hash: String,
     pub explanation: String,
+    pub eligible_sources: Vec<EvidenceSource>,
+    pub selected_plan: Option<VerificationPlan>,
+    pub comparison_method: ComparisonMethod,
     pub created_at: String,
 }
 
@@ -148,6 +196,28 @@ pub struct EvidenceInput {
     pub content: Option<Value>,
     pub result_hash: String,
     pub explanation: String,
+    pub eligible_sources: Vec<EvidenceSource>,
+    pub selected_plan: Option<VerificationPlan>,
+    pub comparison_method: ComparisonMethod,
+    pub failures: Vec<VerificationFailureInput>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VerificationFailure {
+    pub id: String,
+    pub claim_id: String,
+    pub stage: String,
+    pub message: String,
+    pub details: Option<Value>,
+    pub created_at: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct VerificationFailureInput {
+    pub stage: String,
+    pub message: String,
+    pub details: Option<Value>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -233,6 +303,7 @@ pub struct DashboardSnapshot {
     pub events: Vec<CodexEvent>,
     pub evidence_settings: EvidenceSettings,
     pub evidence_sources: Vec<EvidenceSource>,
+    pub verification_failures: Vec<VerificationFailure>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]

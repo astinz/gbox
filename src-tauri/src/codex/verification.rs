@@ -3,10 +3,12 @@ use serde_json::{json, Value};
 
 use super::CodexSupervisor;
 use crate::{
-    domain::{ClaimCandidate, CompanyMetricRecord, EvidenceSource},
+    domain::{
+        ClaimCandidate, CompanyMetricRecord, ComparisonMethod, EvidenceSource, VerificationPlan,
+    },
     evidence::{
         evaluator_prompt, planner_prompt, planner_schema, thread_config, validate_plan,
-        verdict_schema, web_verifier_prompt, EvidenceOutcome, ModelVerdict, VerificationPlan,
+        verdict_schema, web_verifier_prompt, EvidenceOutcome, ModelVerdict,
     },
     store::sha256_hex,
     verifier::verify_candidate,
@@ -19,27 +21,79 @@ impl CodexSupervisor {
             .await;
         let sources = self.evidence_sources();
         if sources.is_empty() {
-            return Ok(EvidenceOutcome::unverifiable(
+            let mut outcome = EvidenceOutcome::unverifiable(
                 "verification-router",
                 "No eligible read-only MCP tool or web-search source is available.",
-            ));
+            );
+            outcome.record_failure(
+                "discovery",
+                "No eligible read-only evidence source was discovered.",
+                None,
+            );
+            return Ok(outcome);
         }
-        let plan = self.plan_verification(candidate, &sources).await?;
-        validate_plan(&plan, &sources)?;
-        match plan.source_type.as_str() {
+        let plan = match self.plan_verification(candidate, &sources).await {
+            Ok(plan) => plan,
+            Err(error) => {
+                let mut outcome = EvidenceOutcome::unverifiable(
+                    "verification-router",
+                    format!("Source planning failed: {error}"),
+                );
+                outcome.eligible_sources = sources;
+                outcome.record_failure("planning", error.to_string(), None);
+                return Ok(outcome);
+            }
+        };
+        if let Err(error) = validate_plan(&plan, &sources) {
+            let mut outcome = EvidenceOutcome::unverifiable(
+                "verification-router",
+                format!("The selected source plan was rejected: {error}"),
+            );
+            outcome.eligible_sources = sources;
+            outcome.selected_plan = Some(plan.clone());
+            outcome.record_failure(
+                "policy",
+                error.to_string(),
+                serde_json::to_value(&plan).ok(),
+            );
+            return Ok(outcome);
+        }
+        let result = match plan.source_type.as_str() {
             "mcp" => {
                 self.verify_with_mcp(&verifier_thread, candidate, &plan, &sources)
                     .await
             }
             "web_search" => self.verify_with_web(candidate, &plan).await,
-            "none" => Ok(EvidenceOutcome::unverifiable(
-                "verification-router",
-                format!("No suitable evidence source: {}", plan.rationale),
-            )),
+            "none" => {
+                let mut outcome = EvidenceOutcome::unverifiable(
+                    "verification-router",
+                    format!("No suitable evidence source: {}", plan.rationale),
+                );
+                outcome.record_failure("routing", plan.rationale.clone(), None);
+                Ok(outcome)
+            }
             _ => Err(anyhow!(
                 "verification planner returned an unknown source type"
             )),
-        }
+        };
+        let mut outcome = match result {
+            Ok(outcome) => outcome,
+            Err(error) => {
+                let mut outcome = EvidenceOutcome::unverifiable(
+                    "verification-execution",
+                    format!("Verification execution failed: {error}"),
+                );
+                outcome.record_failure(
+                    execution_stage(&plan),
+                    error.to_string(),
+                    serde_json::to_value(&plan).ok(),
+                );
+                outcome
+            }
+        };
+        outcome.eligible_sources = sources;
+        outcome.selected_plan = Some(plan);
+        Ok(outcome)
     }
 
     async fn plan_verification(
@@ -98,19 +152,17 @@ impl CodexSupervisor {
         let result_hash = hash_value(&content);
         let stored_content = audit_content(plan, &content);
         if response.get("isError").and_then(Value::as_bool) == Some(true) {
-            return Ok(EvidenceOutcome {
-                state: crate::domain::ClaimState::Unverifiable,
-                confidence: 0.0,
-                source_kind: source.source_kind.clone(),
-                source_name: format!("{server}/{tool}"),
-                source_reference: reference,
-                content: Some(stored_content),
-                result_hash,
-                explanation: format!(
-                    "The selected MCP source returned an error: {}",
-                    tool_error(&response)
-                ),
-            });
+            let message = format!(
+                "The selected MCP source returned an error: {}",
+                tool_error(&response)
+            );
+            let mut outcome = EvidenceOutcome::unverifiable(&format!("{server}/{tool}"), &message);
+            outcome.source_kind = source.source_kind.clone();
+            outcome.source_reference = reference;
+            outcome.content = Some(stored_content);
+            outcome.result_hash = result_hash;
+            outcome.record_failure("source_call", message, Some(response));
+            return Ok(outcome);
         }
 
         if let Some(record) = company_metric_record(&content) {
@@ -124,10 +176,28 @@ impl CodexSupervisor {
                 content: Some(stored_content),
                 result_hash,
                 explanation: deterministic.explanation,
+                eligible_sources: Vec::new(),
+                selected_plan: None,
+                comparison_method: ComparisonMethod::DeterministicAdapter,
+                failures: Vec::new(),
             });
         }
 
-        let verdict = self.evaluate_tool_result(candidate, &content).await?;
+        let verdict = match self.evaluate_tool_result(candidate, &content).await {
+            Ok(verdict) => verdict,
+            Err(error) => {
+                let mut outcome = EvidenceOutcome::unverifiable(
+                    &format!("{server}/{tool}"),
+                    format!("Evidence evaluation failed: {error}"),
+                );
+                outcome.source_kind = source.source_kind.clone();
+                outcome.source_reference = reference;
+                outcome.content = Some(stored_content);
+                outcome.result_hash = result_hash;
+                outcome.record_failure("evaluation", error.to_string(), Some(content));
+                return Ok(outcome);
+            }
+        };
         Ok(EvidenceOutcome {
             state: verdict.verdict,
             confidence: normalized_confidence(verdict.confidence),
@@ -137,6 +207,10 @@ impl CodexSupervisor {
             content: Some(stored_content),
             result_hash,
             explanation: verdict.explanation,
+            eligible_sources: Vec::new(),
+            selected_plan: None,
+            comparison_method: ComparisonMethod::ModelAssistedMcp,
+            failures: Vec::new(),
         })
     }
 
@@ -213,6 +287,10 @@ impl CodexSupervisor {
             result_hash: hash_value(&content),
             content: Some(content),
             explanation: verdict.explanation,
+            eligible_sources: Vec::new(),
+            selected_plan: None,
+            comparison_method: ComparisonMethod::ModelAssistedWeb,
+            failures: Vec::new(),
         })
     }
 }
@@ -257,6 +335,14 @@ fn normalized_confidence(confidence: f64) -> f64 {
         confidence.clamp(0.0, 1.0)
     } else {
         0.0
+    }
+}
+
+fn execution_stage(plan: &VerificationPlan) -> &'static str {
+    match plan.source_type.as_str() {
+        "mcp" => "source_call",
+        "web_search" => "web_verification",
+        _ => "verification",
     }
 }
 

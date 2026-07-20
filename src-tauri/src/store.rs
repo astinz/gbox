@@ -10,10 +10,16 @@ use uuid::Uuid;
 
 use crate::domain::{
     ActionState, Claim, ClaimCandidate, ClaimState, CodexEvent, Decision, Evidence, EvidenceInput,
-    PendingAction, Receipt,
+    PendingAction, Receipt, VerificationFailure,
 };
 
+mod rows;
 mod schema;
+
+use rows::{
+    action_from_row, claim_from_row, decision_from_row, event_from_row, evidence_from_row,
+    receipt_from_row, verification_failure_from_row,
+};
 
 const GENESIS_HASH: &str = "0000000000000000000000000000000000000000000000000000000000000000";
 
@@ -189,14 +195,19 @@ impl Store {
             content: input.content.clone(),
             result_hash: input.result_hash.clone(),
             explanation: input.explanation.clone(),
+            eligible_sources: input.eligible_sources.clone(),
+            selected_plan: input.selected_plan.clone(),
+            comparison_method: input.comparison_method.clone(),
             created_at: now(),
         };
-        let connection = self.lock()?;
-        connection.execute(
+        let mut connection = self.lock()?;
+        let transaction = connection.transaction()?;
+        transaction.execute(
             r#"INSERT INTO evidence (
               id, claim_id, source_kind, source_reference, record_json,
-              result_hash, explanation, created_at, source_name
-            ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)"#,
+              result_hash, explanation, created_at, source_name, eligible_sources_json,
+              selected_plan_json, comparison_method
+            ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)"#,
             params![
                 evidence.id,
                 evidence.claim_id,
@@ -211,8 +222,33 @@ impl Store {
                 evidence.explanation,
                 evidence.created_at,
                 evidence.source_name,
+                serde_json::to_string(&evidence.eligible_sources)?,
+                evidence
+                    .selected_plan
+                    .as_ref()
+                    .map(serde_json::to_string)
+                    .transpose()?,
+                evidence.comparison_method.as_db(),
             ],
         )?;
+        for failure in &input.failures {
+            transaction.execute(
+                "INSERT INTO verification_failures VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+                params![
+                    Uuid::new_v4().to_string(),
+                    claim_id,
+                    failure.stage,
+                    failure.message,
+                    failure
+                        .details
+                        .as_ref()
+                        .map(serde_json::to_string)
+                        .transpose()?,
+                    now(),
+                ],
+            )?;
+        }
+        transaction.commit()?;
         Ok(evidence)
     }
 
@@ -460,6 +496,13 @@ impl Store {
         )
     }
 
+    pub fn list_verification_failures(&self) -> Result<Vec<VerificationFailure>> {
+        self.query_list(
+            "SELECT * FROM verification_failures ORDER BY created_at DESC LIMIT 500",
+            verification_failure_from_row,
+        )
+    }
+
     pub fn list_actions(&self) -> Result<Vec<PendingAction>> {
         self.query_list(
             "SELECT * FROM actions ORDER BY requested_at DESC",
@@ -526,7 +569,7 @@ impl Store {
         let mut connection = self.lock()?;
         let transaction = connection.transaction()?;
         transaction.execute_batch(
-            "DELETE FROM permits; DELETE FROM webhook_deliveries; DELETE FROM decisions; DELETE FROM actions; DELETE FROM evidence; DELETE FROM claims; DELETE FROM events; DELETE FROM receipts; DELETE FROM sessions;",
+            "DELETE FROM permits; DELETE FROM webhook_deliveries; DELETE FROM decisions; DELETE FROM actions; DELETE FROM verification_failures; DELETE FROM evidence; DELETE FROM claims; DELETE FROM events; DELETE FROM receipts; DELETE FROM sessions;",
         )?;
         transaction.commit()?;
         Ok(())
@@ -721,129 +764,12 @@ fn governance_receipt_payload(
     }))
 }
 
-fn claim_from_row(row: &Row<'_>) -> rusqlite::Result<Claim> {
-    let state: String = row.get(12)?;
-    let legacy_subject: Option<String> = row.get(6)?;
-    let legacy_predicate: Option<String> = row.get(7)?;
-    let legacy_temporal_context: Option<String> = row.get(8)?;
-    Ok(Claim {
-        id: row.get(0)?,
-        session_id: row.get(2)?,
-        turn_id: row.get(3)?,
-        statement: row.get(4)?,
-        claim_type: row.get(5)?,
-        subject: row.get::<_, Option<String>>(15)?.or(legacy_subject),
-        predicate: row.get::<_, Option<String>>(16)?.or(legacy_predicate),
-        object: row.get(17)?,
-        asserted_value: row.get(9)?,
-        unit: row.get(10)?,
-        temporal_context: row
-            .get::<_, Option<String>>(18)?
-            .or(legacy_temporal_context),
-        location: row.get(19)?,
-        source_span: row.get(11)?,
-        state: ClaimState::try_from(state.as_str()).map_err(conversion_error)?,
-        confidence: row.get(13)?,
-        created_at: row.get(14)?,
-    })
-}
-
-fn evidence_from_row(row: &Row<'_>) -> rusqlite::Result<Evidence> {
-    let record_json: Option<String> = row.get(4)?;
-    let source_kind: String = row.get(2)?;
-    Ok(Evidence {
-        id: row.get(0)?,
-        claim_id: row.get(1)?,
-        source_kind: source_kind.clone(),
-        source_name: row.get::<_, Option<String>>(8)?.unwrap_or(source_kind),
-        source_reference: row.get(3)?,
-        content: record_json
-            .map(|value| serde_json::from_str(&value).map_err(json_error))
-            .transpose()?,
-        result_hash: row.get(5)?,
-        explanation: row.get(6)?,
-        created_at: row.get(7)?,
-    })
-}
-
-fn action_from_row(row: &Row<'_>) -> rusqlite::Result<PendingAction> {
-    let state: String = row.get(7)?;
-    let claim_ids_json: String = row.get(8)?;
-    Ok(PendingAction {
-        id: row.get(0)?,
-        session_id: row.get(1)?,
-        turn_id: row.get(2)?,
-        tool_use_id: row.get(3)?,
-        action_type: row.get(4)?,
-        report_markdown: row.get(5)?,
-        payload_hash: row.get(6)?,
-        state: ActionState::try_from(state.as_str()).map_err(conversion_error)?,
-        claim_ids: serde_json::from_str(&claim_ids_json).map_err(json_error)?,
-        requested_at: row.get(9)?,
-        decided_at: row.get(10)?,
-        executed_at: row.get(11)?,
-    })
-}
-
-fn decision_from_row(row: &Row<'_>) -> rusqlite::Result<Decision> {
-    Ok(Decision {
-        id: row.get(0)?,
-        action_id: row.get(1)?,
-        decision: row.get(2)?,
-        reason: row.get(3)?,
-        decided_by: row.get(4)?,
-        decided_at: row.get(5)?,
-    })
-}
-
-fn receipt_from_row(row: &Row<'_>) -> rusqlite::Result<Receipt> {
-    let payload_json: String = row.get(4)?;
-    Ok(Receipt {
-        sequence: row.get(0)?,
-        id: row.get(1)?,
-        event_type: row.get(2)?,
-        entity_id: row.get(3)?,
-        payload: serde_json::from_str(&payload_json).map_err(json_error)?,
-        previous_hash: row.get(5)?,
-        hash: row.get(6)?,
-        created_at: row.get(7)?,
-    })
-}
-
-fn event_from_row(row: &Row<'_>) -> rusqlite::Result<CodexEvent> {
-    let payload_json: String = row.get(4)?;
-    Ok(CodexEvent {
-        id: row.get(0)?,
-        session_id: row.get(1)?,
-        method: row.get(2)?,
-        summary: row.get(3)?,
-        payload: serde_json::from_str(&payload_json).map_err(json_error)?,
-        source: row.get(5)?,
-        created_at: row.get(6)?,
-    })
-}
-
 fn random_token() -> String {
     format!("{}{}", Uuid::new_v4().simple(), Uuid::new_v4().simple())
 }
 
 fn now() -> String {
     Utc::now().to_rfc3339_opts(SecondsFormat::Millis, true)
-}
-
-fn conversion_error(message: String) -> rusqlite::Error {
-    rusqlite::Error::FromSqlConversionFailure(
-        0,
-        rusqlite::types::Type::Text,
-        Box::new(std::io::Error::new(
-            std::io::ErrorKind::InvalidData,
-            message,
-        )),
-    )
-}
-
-fn json_error(error: serde_json::Error) -> rusqlite::Error {
-    rusqlite::Error::FromSqlConversionFailure(0, rusqlite::types::Type::Text, Box::new(error))
 }
 
 #[cfg(test)]

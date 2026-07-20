@@ -35,6 +35,33 @@ export type Evidence = {
   content?: unknown;
   resultHash: string;
   explanation: string;
+  eligibleSources: EvidenceSource[];
+  selectedPlan?: VerificationPlan;
+  comparisonMethod: ComparisonMethod;
+  createdAt: string;
+};
+
+export type ComparisonMethod =
+  | "deterministic_adapter"
+  | "model_assisted_mcp"
+  | "model_assisted_web"
+  | "no_comparison";
+
+export type VerificationPlan = {
+  sourceType: "mcp" | "web_search" | "none";
+  server?: string;
+  tool?: string;
+  arguments?: unknown;
+  query?: string;
+  rationale: string;
+};
+
+export type VerificationFailure = {
+  id: string;
+  claimId: string;
+  stage: string;
+  message: string;
+  details?: unknown;
   createdAt: string;
 };
 
@@ -109,6 +136,7 @@ export type DashboardSnapshot = {
   events: CodexEvent[];
   evidenceSettings: EvidenceSettings;
   evidenceSources: EvidenceSource[];
+  verificationFailures: VerificationFailure[];
 };
 
 export type WebSearchMode = "disabled" | "cached" | "live";
@@ -173,4 +201,5 @@ export const emptySnapshot: DashboardSnapshot = {
     mcpServers: [],
   },
   evidenceSources: [],
+  verificationFailures: [],
 };

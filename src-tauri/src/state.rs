@@ -55,6 +55,7 @@ impl ApplicationState {
             events: self.store.list_events()?,
             evidence_settings: self.codex.evidence_settings(),
             evidence_sources: self.codex.evidence_sources(),
+            verification_failures: self.store.list_verification_failures()?,
         })
     }
 

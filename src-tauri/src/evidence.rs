@@ -5,21 +5,11 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
 
 use crate::domain::{
-    ClaimCandidate, ClaimState, ConfiguredMcpServer, EvidenceInput, EvidenceSettings,
-    EvidenceSource, McpTransport, WebSearchMode,
+    ClaimCandidate, ClaimState, ComparisonMethod, ConfiguredMcpServer, EvidenceInput,
+    EvidenceSettings, EvidenceSource, McpTransport, VerificationFailureInput, VerificationPlan,
+    WebSearchMode,
 };
 use crate::store::sha256_hex;
-
-#[derive(Debug, Clone, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct VerificationPlan {
-    pub source_type: String,
-    pub server: Option<String>,
-    pub tool: Option<String>,
-    pub arguments: Option<Value>,
-    pub query: Option<String>,
-    pub rationale: String,
-}
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -49,6 +39,10 @@ pub struct EvidenceOutcome {
     pub content: Option<Value>,
     pub result_hash: String,
     pub explanation: String,
+    pub eligible_sources: Vec<EvidenceSource>,
+    pub selected_plan: Option<VerificationPlan>,
+    pub comparison_method: ComparisonMethod,
+    pub failures: Vec<VerificationFailureInput>,
 }
 
 impl EvidenceOutcome {
@@ -63,7 +57,24 @@ impl EvidenceOutcome {
             content: None,
             result_hash: sha256_hex(explanation.as_bytes()),
             explanation,
+            eligible_sources: Vec::new(),
+            selected_plan: None,
+            comparison_method: ComparisonMethod::NoComparison,
+            failures: Vec::new(),
         }
+    }
+
+    pub fn record_failure(
+        &mut self,
+        stage: &str,
+        message: impl Into<String>,
+        details: Option<Value>,
+    ) {
+        self.failures.push(VerificationFailureInput {
+            stage: stage.to_owned(),
+            message: message.into(),
+            details,
+        });
     }
 
     pub fn to_input(&self) -> EvidenceInput {
@@ -74,6 +85,10 @@ impl EvidenceOutcome {
             content: self.content.clone(),
             result_hash: self.result_hash.clone(),
             explanation: self.explanation.clone(),
+            eligible_sources: self.eligible_sources.clone(),
+            selected_plan: self.selected_plan.clone(),
+            comparison_method: self.comparison_method.clone(),
+            failures: self.failures.clone(),
         }
     }
 }

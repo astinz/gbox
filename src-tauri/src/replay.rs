@@ -6,7 +6,10 @@ use serde_json::json;
 use tauri::{AppHandle, Emitter};
 
 use crate::{
-    domain::{ClaimCandidate, DashboardSnapshot, EvidenceInput},
+    domain::{
+        ClaimCandidate, ClaimState, ComparisonMethod, DashboardSnapshot, EvidenceInput,
+        EvidenceSource, VerificationFailureInput, VerificationPlan,
+    },
     state::ApplicationState,
     verifier::{find_seed_record, verify_candidate},
 };
@@ -69,6 +72,19 @@ pub async fn start_replay(
                     .transpose()?,
                 result_hash: outcome.result_hash,
                 explanation: outcome.explanation,
+                eligible_sources: vec![replay_source()],
+                selected_plan: Some(replay_plan(&candidate)),
+                comparison_method: ComparisonMethod::DeterministicAdapter,
+                failures: if outcome.state == ClaimState::Unverifiable {
+                    vec![VerificationFailureInput {
+                        stage: "source_call".to_owned(),
+                        message: "The replay source has no matching authoritative record."
+                            .to_owned(),
+                        details: None,
+                    }]
+                } else {
+                    Vec::new()
+                },
             },
         )?;
         let _ = app.emit("gbox://claim-updated", &claim);
@@ -120,6 +136,38 @@ pub async fn start_replay(
     )?;
     let _ = app.emit("gbox://codex-event", event);
     state.snapshot()
+}
+
+fn replay_source() -> EvidenceSource {
+    EvidenceSource {
+        source_kind: "plugin_mcp".to_owned(),
+        server: Some("company_data".to_owned()),
+        tool: Some("company_get_metric".to_owned()),
+        title: "Get authoritative company metric".to_owned(),
+        description: "Read one synthetic company metric.".to_owned(),
+        input_schema: json!({
+            "type": "object",
+            "required": ["company_id", "metric", "period"]
+        }),
+        read_only: true,
+        plugin_backed: true,
+    }
+}
+
+fn replay_plan(candidate: &ClaimCandidate) -> VerificationPlan {
+    VerificationPlan {
+        source_type: "mcp".to_owned(),
+        server: Some("company_data".to_owned()),
+        tool: Some("company_get_metric".to_owned()),
+        arguments: Some(json!({
+            "company_id": candidate.subject,
+            "metric": candidate.predicate,
+            "period": candidate.temporal_context,
+        })),
+        query: None,
+        rationale: "The company metric tool is the narrow authoritative source for this claim."
+            .to_owned(),
+    }
 }
 
 async fn deliver_replay_webhook(app_data_dir: &Path, input: serde_json::Value) -> Result<()> {

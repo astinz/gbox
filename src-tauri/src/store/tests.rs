@@ -1,4 +1,5 @@
 use super::*;
+use crate::domain::{ComparisonMethod, EvidenceSource, VerificationFailureInput, VerificationPlan};
 
 fn sample_candidate(value: &str) -> ClaimCandidate {
     ClaimCandidate {
@@ -38,6 +39,10 @@ fn approved_action(store: &Store) -> (PendingAction, String) {
                 content: None,
                 result_hash: "evidence-hash".to_owned(),
                 explanation: "verified in test".to_owned(),
+                eligible_sources: vec![],
+                selected_plan: None,
+                comparison_method: ComparisonMethod::DeterministicAdapter,
+                failures: vec![],
             },
         )
         .expect("evidence");
@@ -136,6 +141,90 @@ fn persists_across_restart() {
         assert!(store.verify_receipt_chain().expect("chain"));
     }
     let _ = std::fs::remove_file(path);
+}
+
+#[test]
+fn persists_verification_trace_and_failure_history() {
+    let store = Store::open_memory().expect("store");
+    store
+        .create_session("trace-session", "test", None)
+        .expect("session");
+    let claim = store
+        .upsert_claim(
+            "trace-session",
+            Some("trace-turn"),
+            &sample_candidate("42"),
+            ClaimState::Unverifiable,
+            0.8,
+        )
+        .expect("claim");
+    let source = EvidenceSource {
+        source_kind: "plugin_mcp".to_owned(),
+        server: Some("company_data".to_owned()),
+        tool: Some("company_get_metric".to_owned()),
+        title: "Company metric".to_owned(),
+        description: "Read a company metric".to_owned(),
+        input_schema: serde_json::json!({"type": "object"}),
+        read_only: true,
+        plugin_backed: true,
+    };
+    let plan = VerificationPlan {
+        source_type: "mcp".to_owned(),
+        server: source.server.clone(),
+        tool: source.tool.clone(),
+        arguments: Some(serde_json::json!({"company_id": "acme"})),
+        query: None,
+        rationale: "Use the narrow authoritative source.".to_owned(),
+    };
+    store
+        .insert_evidence(
+            &claim.id,
+            &EvidenceInput {
+                source_kind: "plugin_mcp".to_owned(),
+                source_name: "company_data/company_get_metric".to_owned(),
+                source_reference: "mcpServer/tool/call:trace".to_owned(),
+                content: Some(serde_json::json!({"toolResult": {"error": "timeout"}})),
+                result_hash: "trace-hash".to_owned(),
+                explanation: "The source did not return a usable record.".to_owned(),
+                eligible_sources: vec![source],
+                selected_plan: Some(plan),
+                comparison_method: ComparisonMethod::NoComparison,
+                failures: vec![VerificationFailureInput {
+                    stage: "source_call".to_owned(),
+                    message: "The selected source timed out.".to_owned(),
+                    details: Some(serde_json::json!({"timeoutMs": 30_000})),
+                }],
+            },
+        )
+        .expect("evidence");
+
+    let evidence = store.list_evidence().expect("evidence");
+    assert_eq!(evidence.len(), 1);
+    assert_eq!(evidence[0].eligible_sources.len(), 1);
+    assert_eq!(
+        evidence[0]
+            .selected_plan
+            .as_ref()
+            .expect("selected plan")
+            .rationale,
+        "Use the narrow authoritative source."
+    );
+    assert_eq!(
+        evidence[0].comparison_method,
+        ComparisonMethod::NoComparison
+    );
+    let failures = store.list_verification_failures().expect("failure history");
+    assert_eq!(failures.len(), 1);
+    assert_eq!(failures[0].claim_id, claim.id);
+    assert_eq!(failures[0].stage, "source_call");
+    assert_eq!(
+        failures[0]
+            .details
+            .as_ref()
+            .and_then(|details| details.get("timeoutMs"))
+            .and_then(serde_json::Value::as_i64),
+        Some(30_000)
+    );
 }
 
 #[test]

@@ -56,7 +56,18 @@ pub(super) fn migrate(connection: &Connection) -> Result<()> {
           result_hash TEXT NOT NULL,
           explanation TEXT NOT NULL,
           created_at TEXT NOT NULL,
-          source_name TEXT
+          source_name TEXT,
+          eligible_sources_json TEXT,
+          selected_plan_json TEXT,
+          comparison_method TEXT
+        );
+        CREATE TABLE IF NOT EXISTS verification_failures (
+          id TEXT PRIMARY KEY,
+          claim_id TEXT NOT NULL REFERENCES claims(id) ON DELETE CASCADE,
+          stage TEXT NOT NULL,
+          message TEXT NOT NULL,
+          details_json TEXT,
+          created_at TEXT NOT NULL
         );
         CREATE TABLE IF NOT EXISTS actions (
           id TEXT PRIMARY KEY,
@@ -115,12 +126,19 @@ pub(super) fn migrate(connection: &Connection) -> Result<()> {
     add_column(connection, "claims", "temporal_context", "TEXT")?;
     add_column(connection, "claims", "location", "TEXT")?;
     add_column(connection, "evidence", "source_name", "TEXT")?;
+    add_column(connection, "evidence", "eligible_sources_json", "TEXT")?;
+    add_column(connection, "evidence", "selected_plan_json", "TEXT")?;
+    add_column(connection, "evidence", "comparison_method", "TEXT")?;
     connection.execute(
         "INSERT OR IGNORE INTO schema_migrations (version, applied_at) VALUES (1, ?1)",
         params![now()],
     )?;
     connection.execute(
         "INSERT OR IGNORE INTO schema_migrations (version, applied_at) VALUES (2, ?1)",
+        params![now()],
+    )?;
+    connection.execute(
+        "INSERT OR IGNORE INTO schema_migrations (version, applied_at) VALUES (3, ?1)",
         params![now()],
     )?;
     Ok(())

@@ -87,11 +87,62 @@ describe("gBox interface", () => {
           claim("unknown", "Unverifiable"),
         ]}
         evidence={[]}
+        failures={[]}
       />,
     );
     fireEvent.click(screen.getByRole("button", { name: "Contradicted" }));
-    expect(screen.getByText("Contradicted test claim")).toBeInTheDocument();
-    expect(screen.queryByText("Verified test claim")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Contradicted test claim/ })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Verified test claim/ })).not.toBeInTheDocument();
+  });
+
+  it("shows a durable verification dossier for the selected claim", () => {
+    const selected = claim("claim-detail", "Contradicted");
+    render(
+      <ClaimLedger
+        claims={[selected]}
+        evidence={[{
+          id: "evidence-1",
+          claimId: selected.id,
+          sourceKind: "plugin_mcp",
+          sourceName: "company_data/company_get_metric",
+          sourceReference: "mcpServer/tool/call:7",
+          content: { toolResult: { value: "17", unit: "count" } },
+          resultHash: "abc123",
+          explanation: "The claim states 42, but the record contains 17.",
+          eligibleSources: [{
+            sourceKind: "plugin_mcp",
+            server: "company_data",
+            tool: "company_get_metric",
+            title: "Company metric",
+            description: "Read a metric",
+            inputSchema: {},
+            readOnly: true,
+            pluginBacked: true,
+          }],
+          selectedPlan: {
+            sourceType: "mcp",
+            server: "company_data",
+            tool: "company_get_metric",
+            arguments: { company_id: "acme" },
+            rationale: "This is the narrow authoritative source.",
+          },
+          comparisonMethod: "deterministic_adapter",
+          createdAt: "2026-07-20T12:00:00Z",
+        }]}
+        failures={[{
+          id: "failure-1",
+          claimId: selected.id,
+          stage: "source_call",
+          message: "An earlier source attempt timed out.",
+          createdAt: "2026-07-20T11:59:00Z",
+        }]}
+      />,
+    );
+    expect(screen.getByRole("heading", { name: "Extracted structure" })).toBeInTheDocument();
+    expect(screen.getByText("This is the narrow authoritative source.")).toBeInTheDocument();
+    expect(screen.getAllByText("Deterministic adapter")).not.toHaveLength(0);
+    expect(screen.getByText("An earlier source attempt timed out.")).toBeInTheDocument();
+    expect(screen.getByText("Raw stored evidence")).toBeInTheDocument();
   });
 
   it("exposes the global observation consent control", () => {

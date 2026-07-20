@@ -173,4 +173,54 @@
   .risk--high { @apply border-red-200 bg-red-100 text-red-800; }
   .risk--caution { @apply border-amber-200 bg-amber-100 text-amber-900; }
   .risk--low { @apply border-emerald-200 bg-emerald-100 text-emerald-800; }
+  .verification-workbench { @apply grid items-start gap-3 xl:grid-cols-[minmax(0,0.92fr)_minmax(430px,1.08fr)]; }
+  .claim-index { @apply min-w-0; }
+  .claim-select { @apply block w-full rounded-sm text-left outline-none focus-visible:ring-2 focus-visible:ring-ring; }
+  .claim-select span { @apply block font-medium leading-snug; }
+  .claim-select small { @apply mt-1 block font-mono text-[10px] leading-relaxed text-muted-foreground; }
+  .claim-dossier { @apply min-w-0 overflow-hidden rounded-lg border border-foreground/30 bg-card shadow-[4px_4px_0_0_var(--foreground)]; }
+  .claim-dossier__header { @apply flex min-h-18 items-center justify-between gap-3 border-b border-foreground bg-foreground px-4 py-3 text-background; }
+  .claim-dossier__header .eyebrow { @apply text-background/60; }
+  .claim-dossier__id { @apply mt-1 font-mono text-xs tracking-[0.12em]; }
+  .claim-dossier__header [data-slot="badge"] { @apply border-background/30 bg-background/10 text-background; }
+  .claim-dossier__body { @apply divide-y divide-foreground/15; }
+  .dossier-section { @apply p-4; }
+  .dossier-heading { @apply mb-3 flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground; }
+  .dossier-heading svg { @apply size-3.5 text-foreground; }
+  .dossier-statement { @apply border-l-2 border-accent pl-3 text-[15px] font-semibold leading-relaxed; }
+  .claim-fields { @apply mt-4 grid grid-cols-2 gap-px overflow-hidden rounded-md border bg-border sm:grid-cols-4; }
+  .claim-fields > div, .evidence-metadata > div { @apply min-w-0 bg-card px-3 py-2.5; }
+  .claim-fields dt, .evidence-metadata dt { @apply font-mono text-[9px] uppercase tracking-[0.13em] text-muted-foreground; }
+  .claim-fields dd, .evidence-metadata dd { @apply mt-1 truncate font-mono text-xs font-medium; }
+  .source-span { @apply mt-3 grid gap-1 rounded-md bg-muted/70 px-3 py-2; }
+  .source-span span { @apply font-mono text-[9px] uppercase tracking-[0.12em] text-muted-foreground; }
+  .source-span q { @apply text-xs italic leading-relaxed; }
+  .route-line { @apply flex flex-wrap items-center gap-2; }
+  .route-line > svg { @apply size-3.5 text-muted-foreground; }
+  .route-node { @apply rounded-sm border bg-muted/50 px-2 py-1 font-mono text-[10px]; }
+  .route-node--selected { @apply border-foreground bg-foreground text-background; }
+  .route-rationale { @apply mt-3 text-sm leading-relaxed text-muted-foreground; }
+  .source-catalog { @apply grid gap-1.5; }
+  .source-catalog__item { @apply grid grid-cols-[18px_minmax(0,1fr)_auto] items-center gap-2 rounded-md border bg-background/50 px-3 py-2; }
+  .source-catalog__item > svg { @apply size-3.5 text-muted-foreground; }
+  .source-catalog__item p { @apply truncate font-mono text-[11px] font-semibold; }
+  .source-catalog__item span { @apply block truncate font-mono text-[9px] uppercase tracking-wider text-muted-foreground; }
+  .evidence-summary { @apply rounded-md border-l-4 border-l-accent bg-muted/50 px-3 py-2.5; }
+  .evidence-summary > span { @apply font-mono text-[10px] font-semibold uppercase tracking-wider; }
+  .evidence-summary p { @apply mt-1 text-sm leading-relaxed; }
+  .evidence-metadata { @apply mt-3 grid gap-px overflow-hidden rounded-md border bg-border sm:grid-cols-3; }
+  .evidence-metadata dd { @apply whitespace-normal break-all; }
+  .code-disclosure { @apply mt-3 overflow-hidden rounded-md border bg-background; }
+  .code-disclosure summary { @apply cursor-pointer select-none px-3 py-2 font-mono text-[10px] font-semibold uppercase tracking-wider hover:bg-muted; }
+  .code-disclosure pre { @apply max-h-72 overflow-auto border-t bg-foreground p-3 font-mono text-[10px] leading-relaxed whitespace-pre-wrap break-all text-background; }
+  .failure-history { @apply grid gap-0; }
+  .failure-history li { @apply grid grid-cols-[10px_minmax(0,1fr)] gap-3 pb-4 last:pb-0; }
+  .failure-history__node { @apply mt-1.5 size-2 rounded-full bg-red-600 ring-4 ring-red-100; }
+  .failure-history li > div { @apply min-w-0; }
+  .failure-history p { @apply flex items-baseline justify-between gap-3 font-mono text-[10px] uppercase tracking-wider; }
+  .failure-history time { @apply font-normal normal-case tracking-normal text-muted-foreground; }
+  .failure-history li > div > span { @apply mt-1 block text-xs leading-relaxed text-muted-foreground; }
+  .failure-clear { @apply flex items-center gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800; }
+  .failure-clear svg { @apply size-4; }
+  .dossier-empty { @apply rounded-md border border-dashed px-3 py-4 text-center text-xs text-muted-foreground; }
 }
