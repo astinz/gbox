@@ -1,5 +1,8 @@
 use super::*;
-use crate::domain::{ComparisonMethod, EvidenceSource, VerificationFailureInput, VerificationPlan};
+use crate::domain::{
+    ComparisonMethod, EvidenceSource, NotificationState, ObservationState,
+    VerificationFailureInput, VerificationPlan,
+};
 
 fn sample_candidate(value: &str) -> ClaimCandidate {
     ClaimCandidate {
@@ -281,4 +284,124 @@ fn claim_deduplicates_within_session() {
         .expect("second");
     assert_eq!(first.id, second.id);
     assert_eq!(store.list_claims().expect("claims").len(), 1);
+}
+
+#[test]
+fn observation_enqueue_is_durable_and_deduplicated() {
+    let store = Store::open_memory().expect("store");
+    let first = store
+        .enqueue_observation(
+            "codex-session",
+            Some("turn-7"),
+            Some("/tmp/research"),
+            "codex-stop-hook",
+            "Acme has 42 production database users.",
+        )
+        .expect("first enqueue");
+    let duplicate = store
+        .enqueue_observation(
+            "codex-session",
+            Some("turn-7"),
+            Some("/different/cwd"),
+            "codex-stop-hook",
+            "Acme has 42 production database users.",
+        )
+        .expect("duplicate enqueue");
+
+    assert!(first.inserted);
+    assert!(!duplicate.inserted);
+    assert_eq!(first.observation.id, duplicate.observation.id);
+    assert_eq!(store.observation_queue_depth().expect("depth"), 1);
+
+    let work = store
+        .claim_next_observation()
+        .expect("claim work")
+        .expect("pending work");
+    assert_eq!(work.observation.state, ObservationState::Processing);
+    assert_eq!(work.observation.attempts, 1);
+    assert_eq!(work.message_body, "Acme has 42 production database users.");
+    assert_eq!(store.recover_observations().expect("recover"), 1);
+    assert_eq!(
+        store
+            .claim_next_observation()
+            .expect("reclaimed")
+            .expect("work after recovery")
+            .observation
+            .attempts,
+        2
+    );
+}
+
+#[test]
+fn observation_notification_tracks_new_repeated_and_changed_verdicts() {
+    let store = Store::open_memory().expect("store");
+    let candidate = sample_candidate("42");
+
+    let first = store
+        .enqueue_observation("session", Some("turn-1"), None, "hook", "first message")
+        .expect("first observation");
+    let new_claim = store
+        .upsert_claim_with_status(
+            "session",
+            Some("turn-1"),
+            &candidate,
+            ClaimState::Contradicted,
+            1.0,
+        )
+        .expect("new claim");
+    let completed = store
+        .complete_observation(&first.observation.id, &[new_claim])
+        .expect("complete first");
+    assert_eq!(completed.notification_state, NotificationState::Pending);
+    assert_eq!(completed.verdict_counts.contradicted, 1);
+
+    let second = store
+        .enqueue_observation("session", Some("turn-2"), None, "hook", "second message")
+        .expect("second observation");
+    let repeated = store
+        .upsert_claim_with_status(
+            "session",
+            Some("turn-2"),
+            &candidate,
+            ClaimState::Contradicted,
+            1.0,
+        )
+        .expect("repeated claim");
+    let completed = store
+        .complete_observation(&second.observation.id, &[repeated])
+        .expect("complete second");
+    assert_eq!(completed.notification_state, NotificationState::Suppressed);
+
+    let third = store
+        .enqueue_observation("session", Some("turn-3"), None, "hook", "third message")
+        .expect("third observation");
+    let changed = store
+        .upsert_claim_with_status(
+            "session",
+            Some("turn-3"),
+            &candidate,
+            ClaimState::Verified,
+            1.0,
+        )
+        .expect("changed claim");
+    let completed = store
+        .complete_observation(&third.observation.id, &[changed])
+        .expect("complete third");
+    assert_eq!(completed.notification_state, NotificationState::Pending);
+    assert_eq!(completed.verdict_counts.verified, 1);
+}
+
+#[test]
+fn observation_without_claims_needs_no_notification() {
+    let store = Store::open_memory().expect("store");
+    let enqueued = store
+        .enqueue_observation("session", Some("turn"), None, "hook", "Hello there.")
+        .expect("observation");
+    let completed = store
+        .complete_observation(&enqueued.observation.id, &[])
+        .expect("complete");
+
+    assert_eq!(completed.state, ObservationState::Completed);
+    assert_eq!(completed.notification_state, NotificationState::NotRequired);
+    assert!(completed.primary_claim_id.is_none());
 }

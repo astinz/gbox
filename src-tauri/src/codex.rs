@@ -21,14 +21,14 @@ use tokio::{
 };
 
 use crate::{
-    domain::{Claim, EvidenceSettings, EvidenceSource, LiveSessionResult, SystemStatus},
-    evidence::{sources_from_status, thread_config, validate_settings, EvidenceOutcome},
+    domain::{EvidenceSettings, EvidenceSource, LiveSessionResult, SystemStatus},
+    evidence::{sources_from_status, thread_config, validate_settings},
     store::Store,
 };
 
 mod extraction;
+mod ingestion;
 mod verification;
-use extraction::fallback_candidate;
 
 const MIN_CODEX_VERSION: &str = "0.144.4";
 
@@ -154,57 +154,6 @@ impl CodexSupervisor {
                 .ok_or_else(|| anyhow!("turn/steer did not return a turn id"));
         }
         self.start_turn(session_id, prompt, None).await
-    }
-
-    pub async fn ingest_text(
-        self: &Arc<Self>,
-        session_id: &str,
-        turn_id: Option<&str>,
-        text: &str,
-    ) -> Result<Vec<Claim>> {
-        if text.trim().is_empty() {
-            return Ok(Vec::new());
-        }
-        let extraction = self.extract_candidates(text).await;
-        let (candidates, extraction_succeeded, extraction_error) = match extraction {
-            Ok(result) => (result, true, None),
-            Err(error) => (
-                vec![fallback_candidate(text)],
-                false,
-                Some(error.to_string()),
-            ),
-        };
-        let mut claims = Vec::new();
-        for candidate in candidates {
-            let outcome = if extraction_succeeded {
-                self.verify_claim(&candidate).await.unwrap_or_else(|error| {
-                    let mut outcome = EvidenceOutcome::unverifiable(
-                        "verification-router",
-                        format!("Verification failed: {error}"),
-                    );
-                    outcome.record_failure("verification", error.to_string(), None);
-                    outcome
-                })
-            } else {
-                let message = extraction_error
-                    .clone()
-                    .unwrap_or_else(|| "Claim extraction failed".to_owned());
-                let mut outcome = EvidenceOutcome::unverifiable("claim-extraction", &message);
-                outcome.record_failure("extraction", message, None);
-                outcome
-            };
-            let claim = self.store.upsert_claim(
-                session_id,
-                turn_id,
-                &candidate,
-                outcome.state.clone(),
-                outcome.confidence,
-            )?;
-            self.store.insert_evidence(&claim.id, &outcome.to_input())?;
-            let _ = self.app.emit("gbox://claim-updated", &claim);
-            claims.push(claim);
-        }
-        Ok(claims)
     }
 
     pub fn status(&self) -> SystemStatus {

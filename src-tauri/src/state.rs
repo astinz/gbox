@@ -9,6 +9,7 @@ use crate::{
     codex::CodexSupervisor,
     domain::{DashboardSnapshot, SystemStatus},
     gate::ActionGate,
+    observation::ObservationService,
     store::Store,
 };
 
@@ -16,12 +17,18 @@ pub struct ApplicationState {
     pub store: Arc<Store>,
     pub codex: Arc<CodexSupervisor>,
     pub gate: Arc<ActionGate>,
+    pub observations: Arc<ObservationService>,
     replay_mode: AtomicBool,
     global_observation: AtomicBool,
 }
 
 impl ApplicationState {
-    pub fn new(store: Arc<Store>, codex: Arc<CodexSupervisor>, gate: Arc<ActionGate>) -> Arc<Self> {
+    pub fn new(
+        store: Arc<Store>,
+        codex: Arc<CodexSupervisor>,
+        gate: Arc<ActionGate>,
+        observations: Arc<ObservationService>,
+    ) -> Arc<Self> {
         let global_observation = store
             .get_setting("global_observation")
             .ok()
@@ -31,6 +38,7 @@ impl ApplicationState {
             store,
             codex,
             gate,
+            observations,
             replay_mode: AtomicBool::new(false),
             global_observation: AtomicBool::new(global_observation),
         })
@@ -39,6 +47,8 @@ impl ApplicationState {
     pub fn status(&self) -> SystemStatus {
         let mut status = self.codex.status();
         status.global_observation = self.global_observation.load(Ordering::Relaxed);
+        status.observation_worker_healthy = self.observations.healthy();
+        status.observation_queue_depth = self.store.observation_queue_depth().unwrap_or(0);
         status.replay_mode = self.replay_mode.load(Ordering::Relaxed);
         status.receipt_chain_valid = self.store.verify_receipt_chain().unwrap_or(false);
         status
@@ -56,6 +66,8 @@ impl ApplicationState {
             evidence_settings: self.codex.evidence_settings(),
             evidence_sources: self.codex.evidence_sources(),
             verification_failures: self.store.list_verification_failures()?,
+            recent_observations: self.store.list_recent_observations()?,
+            observation_queue_depth: self.store.observation_queue_depth()?,
         })
     }
 

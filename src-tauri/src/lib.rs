@@ -4,6 +4,7 @@ mod control;
 mod domain;
 mod evidence;
 mod gate;
+mod observation;
 mod replay;
 mod state;
 mod store;
@@ -24,7 +25,13 @@ pub fn run() {
             let store = Arc::new(store::Store::open(&app_data_dir.join("gbox.sqlite3"))?);
             let codex = codex::CodexSupervisor::new(app_handle.clone(), store.clone());
             let gate = gate::ActionGate::new(app_handle.clone(), store.clone());
-            let state = state::ApplicationState::new(store, codex, gate);
+            let observations = observation::ObservationService::new(
+                app_handle.clone(),
+                store.clone(),
+                codex.clone(),
+            );
+            let state = state::ApplicationState::new(store, codex, gate, observations.clone());
+            observations.start()?;
 
             tauri::async_runtime::block_on(control::start_control_server(
                 app_handle,
@@ -43,6 +50,8 @@ pub fn run() {
             commands::get_dashboard_snapshot,
             commands::verify_receipt_chain,
             commands::set_global_observation,
+            commands::retry_observation,
+            commands::mark_observation_notified,
             commands::update_evidence_settings,
         ])
         .build(tauri::generate_context!())

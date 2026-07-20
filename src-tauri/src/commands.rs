@@ -4,8 +4,9 @@ use tauri::{AppHandle, Emitter, Manager, State};
 
 use crate::{
     domain::{
-        DashboardSnapshot, LiveSessionResult, ResolveActionInput, ResolveActionResult,
-        SendLivePromptInput, StartLiveSessionInput, SystemStatus, UpdateEvidenceSettingsInput,
+        DashboardSnapshot, LiveSessionResult, NotificationState, Observation, ResolveActionInput,
+        ResolveActionResult, SendLivePromptInput, StartLiveSessionInput, SystemStatus,
+        UpdateEvidenceSettingsInput,
     },
     replay,
     state::ApplicationState,
@@ -44,6 +45,29 @@ pub fn set_global_observation(
         .map_err(|error| error.to_string())?;
     let _ = app.emit("gbox://system-status", &status);
     Ok(status)
+}
+
+#[tauri::command]
+pub fn retry_observation(
+    state: State<'_, Arc<ApplicationState>>,
+    observation_id: String,
+) -> CommandResult<Observation> {
+    state
+        .observations
+        .retry(&observation_id)
+        .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+pub fn mark_observation_notified(
+    state: State<'_, Arc<ApplicationState>>,
+    observation_id: String,
+    notification_state: NotificationState,
+) -> CommandResult<Observation> {
+    state
+        .store
+        .mark_observation_notified(&observation_id, notification_state)
+        .map_err(|error| error.to_string())
 }
 
 #[tauri::command]

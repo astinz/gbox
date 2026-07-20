@@ -34,6 +34,115 @@ impl TryFrom<&str> for ClaimState {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "PascalCase")]
+pub enum ObservationState {
+    Pending,
+    Processing,
+    Completed,
+    Failed,
+}
+
+impl ObservationState {
+    pub fn as_db(&self) -> &'static str {
+        match self {
+            Self::Pending => "Pending",
+            Self::Processing => "Processing",
+            Self::Completed => "Completed",
+            Self::Failed => "Failed",
+        }
+    }
+}
+
+impl TryFrom<&str> for ObservationState {
+    type Error = String;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        match value {
+            "Pending" => Ok(Self::Pending),
+            "Processing" => Ok(Self::Processing),
+            "Completed" => Ok(Self::Completed),
+            "Failed" => Ok(Self::Failed),
+            other => Err(format!("unknown observation state: {other}")),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "PascalCase")]
+pub enum NotificationState {
+    Pending,
+    Sent,
+    Suppressed,
+    Failed,
+    NotRequired,
+}
+
+impl NotificationState {
+    pub fn as_db(&self) -> &'static str {
+        match self {
+            Self::Pending => "Pending",
+            Self::Sent => "Sent",
+            Self::Suppressed => "Suppressed",
+            Self::Failed => "Failed",
+            Self::NotRequired => "NotRequired",
+        }
+    }
+}
+
+impl TryFrom<&str> for NotificationState {
+    type Error = String;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        match value {
+            "Pending" => Ok(Self::Pending),
+            "Sent" => Ok(Self::Sent),
+            "Suppressed" => Ok(Self::Suppressed),
+            "Failed" => Ok(Self::Failed),
+            "NotRequired" => Ok(Self::NotRequired),
+            other => Err(format!("unknown notification state: {other}")),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ObservationVerdictCounts {
+    pub verified: usize,
+    pub contradicted: usize,
+    pub unverifiable: usize,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Observation {
+    pub id: String,
+    pub session_id: String,
+    pub turn_id: Option<String>,
+    pub cwd: Option<String>,
+    pub source: String,
+    pub message_hash: String,
+    pub message_excerpt: String,
+    pub state: ObservationState,
+    pub attempts: usize,
+    pub failure: Option<String>,
+    pub primary_claim_id: Option<String>,
+    pub verdict_counts: ObservationVerdictCounts,
+    pub notification_state: NotificationState,
+    pub notification_target: Option<NotificationTarget>,
+    pub created_at: String,
+    pub started_at: Option<String>,
+    pub completed_at: Option<String>,
+    pub notified_at: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NotificationTarget {
+    pub observation_id: String,
+    pub primary_claim_id: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "PascalCase")]
 pub enum ActionState {
     Pending,
     Approved,
@@ -286,6 +395,8 @@ pub struct SystemStatus {
     pub evidence_sources_ready: bool,
     pub evidence_source_count: usize,
     pub global_observation: bool,
+    pub observation_worker_healthy: bool,
+    pub observation_queue_depth: usize,
     pub receipt_chain_valid: bool,
     pub replay_mode: bool,
     pub diagnostic: Option<String>,
@@ -304,6 +415,8 @@ pub struct DashboardSnapshot {
     pub evidence_settings: EvidenceSettings,
     pub evidence_sources: Vec<EvidenceSource>,
     pub verification_failures: Vec<VerificationFailure>,
+    pub recent_observations: Vec<Observation>,
+    pub observation_queue_depth: usize,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]

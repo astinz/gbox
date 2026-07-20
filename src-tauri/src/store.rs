@@ -13,8 +13,11 @@ use crate::domain::{
     PendingAction, Receipt, VerificationFailure,
 };
 
+mod observations;
 mod rows;
 mod schema;
+
+pub use observations::{EnqueuedObservation, ObservationWork};
 
 use rows::{
     action_from_row, claim_from_row, decision_from_row, event_from_row, evidence_from_row,
@@ -25,6 +28,13 @@ const GENESIS_HASH: &str = "0000000000000000000000000000000000000000000000000000
 
 pub struct Store {
     connection: Mutex<Connection>,
+}
+
+#[derive(Debug, Clone)]
+pub struct ClaimWrite {
+    pub claim: Claim,
+    pub was_created: bool,
+    pub verdict_changed: bool,
 }
 
 impl Store {
@@ -141,17 +151,36 @@ impl Store {
         state: ClaimState,
         confidence: f64,
     ) -> Result<Claim> {
+        Ok(self
+            .upsert_claim_with_status(session_id, turn_id, candidate, state, confidence)?
+            .claim)
+    }
+
+    pub fn upsert_claim_with_status(
+        &self,
+        session_id: &str,
+        turn_id: Option<&str>,
+        candidate: &ClaimCandidate,
+        state: ClaimState,
+        confidence: f64,
+    ) -> Result<ClaimWrite> {
         let dedupe_key = claim_dedupe_key(session_id, candidate);
         let mut connection = self.lock()?;
         let transaction = connection.transaction()?;
         let existing = transaction
             .query_row(
-                "SELECT id FROM claims WHERE dedupe_key = ?1",
+                "SELECT id, state FROM claims WHERE dedupe_key = ?1",
                 params![dedupe_key],
-                |row| row.get::<_, String>(0),
+                |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
             )
             .optional()?;
-        let id = existing.unwrap_or_else(|| Uuid::new_v4().to_string());
+        let was_created = existing.is_none();
+        let verdict_changed = existing
+            .as_ref()
+            .is_some_and(|(_, previous)| previous != state.as_db());
+        let id = existing
+            .map(|(id, _)| id)
+            .unwrap_or_else(|| Uuid::new_v4().to_string());
         let created_at = now();
         transaction.execute(
             r#"INSERT INTO claims (
@@ -193,7 +222,11 @@ impl Store {
             &serde_json::to_value(&claim)?,
         )?;
         transaction.commit()?;
-        Ok(claim)
+        Ok(ClaimWrite {
+            claim,
+            was_created,
+            verdict_changed,
+        })
     }
 
     pub fn insert_evidence(&self, claim_id: &str, input: &EvidenceInput) -> Result<Evidence> {
@@ -580,7 +613,7 @@ impl Store {
         let mut connection = self.lock()?;
         let transaction = connection.transaction()?;
         transaction.execute_batch(
-            "DELETE FROM permits; DELETE FROM webhook_deliveries; DELETE FROM decisions; DELETE FROM actions; DELETE FROM verification_failures; DELETE FROM evidence; DELETE FROM claims; DELETE FROM events; DELETE FROM receipts; DELETE FROM sessions;",
+            "DELETE FROM permits; DELETE FROM webhook_deliveries; DELETE FROM decisions; DELETE FROM actions; DELETE FROM observation_claims; DELETE FROM observations; DELETE FROM verification_failures; DELETE FROM evidence; DELETE FROM claims; DELETE FROM events; DELETE FROM receipts; DELETE FROM sessions;",
         )?;
         transaction.commit()?;
         Ok(())

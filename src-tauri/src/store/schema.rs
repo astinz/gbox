@@ -104,6 +104,38 @@ pub(super) fn migrate(connection: &Connection) -> Result<()> {
           payload_hash TEXT NOT NULL,
           delivered_at TEXT NOT NULL
         );
+        CREATE TABLE IF NOT EXISTS observations (
+          id TEXT PRIMARY KEY,
+          dedupe_key TEXT NOT NULL UNIQUE,
+          session_id TEXT NOT NULL,
+          turn_id TEXT,
+          cwd TEXT,
+          source TEXT NOT NULL,
+          message_hash TEXT NOT NULL,
+          message_body TEXT NOT NULL,
+          message_excerpt TEXT NOT NULL,
+          state TEXT NOT NULL,
+          attempts INTEGER NOT NULL DEFAULT 0,
+          failure TEXT,
+          primary_claim_id TEXT REFERENCES claims(id) ON DELETE SET NULL,
+          verified_count INTEGER NOT NULL DEFAULT 0,
+          contradicted_count INTEGER NOT NULL DEFAULT 0,
+          unverifiable_count INTEGER NOT NULL DEFAULT 0,
+          notification_state TEXT NOT NULL DEFAULT 'NotRequired',
+          created_at TEXT NOT NULL,
+          started_at TEXT,
+          completed_at TEXT,
+          notified_at TEXT
+        );
+        CREATE TABLE IF NOT EXISTS observation_claims (
+          observation_id TEXT NOT NULL REFERENCES observations(id) ON DELETE CASCADE,
+          claim_id TEXT NOT NULL REFERENCES claims(id) ON DELETE CASCADE,
+          ordinal INTEGER NOT NULL,
+          relationship TEXT NOT NULL,
+          PRIMARY KEY (observation_id, claim_id)
+        );
+        CREATE INDEX IF NOT EXISTS observations_queue_idx
+          ON observations (state, created_at);
         CREATE TABLE IF NOT EXISTS receipts (
           sequence INTEGER PRIMARY KEY AUTOINCREMENT,
           id TEXT NOT NULL UNIQUE,
@@ -139,6 +171,10 @@ pub(super) fn migrate(connection: &Connection) -> Result<()> {
     )?;
     connection.execute(
         "INSERT OR IGNORE INTO schema_migrations (version, applied_at) VALUES (3, ?1)",
+        params![now()],
+    )?;
+    connection.execute(
+        "INSERT OR IGNORE INTO schema_migrations (version, applied_at) VALUES (4, ?1)",
         params![now()],
     )?;
     Ok(())

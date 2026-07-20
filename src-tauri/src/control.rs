@@ -36,6 +36,7 @@ struct DiscoveryDocument {
 struct HookPayload {
     session_id: Option<String>,
     turn_id: Option<String>,
+    cwd: Option<String>,
     tool_name: Option<String>,
     tool_use_id: Option<String>,
     tool_input: Option<Value>,
@@ -230,18 +231,33 @@ async fn stop_hook(
         }))
         .into_response();
     }
-    let _ = context
-        .state
-        .store
-        .create_session(&session_id, "codex-global-hook", None);
-    let codex = context.state.codex.clone();
-    let turn_id = payload.turn_id;
-    tokio::spawn(async move {
-        let _ = codex
-            .ingest_text(&session_id, turn_id.as_deref(), &message)
-            .await;
-    });
-    Json(json!({"ok": true, "observed": true})).into_response()
+    if message.trim().is_empty() {
+        return Json(json!({"ok": true, "observed": false})).into_response();
+    }
+    if let Err(error) =
+        context
+            .state
+            .store
+            .create_session(&session_id, "codex-global-hook", payload.cwd.as_deref())
+    {
+        return error_response(StatusCode::INTERNAL_SERVER_ERROR, &error.to_string());
+    }
+    match context.state.observations.enqueue(
+        &session_id,
+        payload.turn_id.as_deref(),
+        payload.cwd.as_deref(),
+        "codex-stop-hook",
+        &message,
+    ) {
+        Ok(enqueued) => Json(json!({
+            "ok": true,
+            "observed": true,
+            "observationId": enqueued.observation.id,
+            "duplicate": !enqueued.inserted,
+        }))
+        .into_response(),
+        Err(error) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &error.to_string()),
+    }
 }
 
 async fn webhook_sink(
@@ -338,11 +354,14 @@ mod tests {
         let payload: HookPayload = serde_json::from_value(json!({
             "session_id": "internal-thread-7",
             "turn_id": "turn-2",
+            "cwd": "/tmp/research",
+            "transcript_path": "/unstable/path.jsonl",
             "last_assistant_message": "A material claim"
         }))
         .expect("valid hook payload");
 
         assert_eq!(payload.session_id.as_deref(), Some("internal-thread-7"));
         assert_eq!(payload.turn_id.as_deref(), Some("turn-2"));
+        assert_eq!(payload.cwd.as_deref(), Some("/tmp/research"));
     }
 }
