@@ -1,16 +1,16 @@
 use anyhow::{anyhow, Context, Result};
 use serde::Deserialize;
 use serde_json::{json, Value};
-use tokio::time::{timeout, Duration};
+use tokio::time::{sleep, timeout, Duration};
 
-use super::CodexSupervisor;
+use super::{is_final_agent_message, CodexSupervisor};
 use crate::{domain::ClaimCandidate, evidence::thread_config};
 
 impl CodexSupervisor {
     pub(super) async fn extract_candidates(&self, text: &str) -> Result<Vec<ClaimCandidate>> {
         let config = thread_config(
             &self.evidence_settings(),
-            &self.inherited_server_names(),
+            &self.inherited_server_disable_configs(),
             true,
         );
         let final_text = self
@@ -18,7 +18,7 @@ impl CodexSupervisor {
                 config,
                 extractor_instructions(),
                 &format!(
-                    "Extract independently checkable factual claims from the following text. Do not verify them.\n\n{text}"
+                    "Extract the material world-state claims from the following text. Do not verify them.\n\n{text}"
                 ),
                 extraction_schema(),
                 false,
@@ -37,13 +37,7 @@ impl CodexSupervisor {
         schema: Value,
         allow_web_search: bool,
     ) -> Result<String> {
-        let runtime = self
-            .runtime
-            .lock()
-            .await
-            .clone()
-            .ok_or_else(|| anyhow!("app-server is not connected"))?;
-        let mut receiver = runtime.events.subscribe();
+        let _structured_guard = self.structured_turn_lock.lock().await;
         let mut effective_config = config;
         if !allow_web_search {
             effective_config["web_search"] = Value::String("disabled".to_owned());
@@ -66,37 +60,58 @@ impl CodexSupervisor {
             .context("internal thread has no id")?
             .to_owned();
         self.internal_threads.lock().await.insert(thread_id.clone());
-        let turn_id = self.start_turn(&thread_id, prompt, Some(schema)).await?;
-        timeout(Duration::from_secs(120), async {
-            let mut captured = None;
+        let started = self
+            .begin_request(
+                "turn/start",
+                json!({
+                    "threadId": thread_id,
+                    "input": [{"type": "text", "text": prompt}],
+                    "approvalPolicy": "never",
+                    "outputSchema": schema,
+                }),
+            )
+            .await;
+        let (request_id, _start_response) = match started {
+            Ok(started) => started,
+            Err(error) => return Err(error),
+        };
+        let result = timeout(Duration::from_secs(120), async {
             loop {
-                let message = receiver.recv().await?;
-                let method = message.get("method").and_then(Value::as_str);
-                let params = message.get("params").unwrap_or(&Value::Null);
-                if params.get("threadId").and_then(Value::as_str) != Some(thread_id.as_str()) {
-                    continue;
-                }
-                if method == Some("item/completed")
-                    && params.get("turnId").and_then(Value::as_str) == Some(turn_id.as_str())
+                let events = self.store.structured_turn_events(&thread_id)?;
+                if let Some(text) = events
+                    .iter()
+                    .filter(|event| event.method == "item/completed")
+                    .find_map(|event| final_agent_text(&event.payload))
                 {
-                    let item = params.get("item").unwrap_or(&Value::Null);
-                    if item.get("type").and_then(Value::as_str) == Some("agentMessage") {
-                        captured = item.get("text").and_then(Value::as_str).map(str::to_owned);
-                    }
+                    return Ok(text.to_owned());
                 }
-                if method == Some("turn/completed")
-                    && params.get("turnId").and_then(Value::as_str) == Some(turn_id.as_str())
+                if let Some(completed) =
+                    events.iter().find(|event| event.method == "turn/completed")
                 {
-                    return captured
-                        .ok_or_else(|| anyhow!("internal turn returned no agent message"));
+                    let error = completed
+                        .payload
+                        .pointer("/turn/error/message")
+                        .and_then(Value::as_str)
+                        .unwrap_or("internal turn returned no agent message");
+                    return Err(anyhow!(error.to_owned()));
                 }
+                sleep(Duration::from_millis(100)).await;
             }
             #[allow(unreachable_code)]
             Ok::<String, anyhow::Error>(String::new())
         })
-        .await
-        .context("internal structured turn timed out")?
+        .await;
+        self.abandon_request(request_id).await;
+        result.context("internal structured turn timed out")?
     }
+}
+
+pub(super) fn final_agent_text(params: &Value) -> Option<&str> {
+    params
+        .get("item")
+        .filter(|item| is_final_agent_message(item))
+        .and_then(|item| item.get("text"))
+        .and_then(Value::as_str)
 }
 
 #[derive(Deserialize)]
@@ -120,7 +135,7 @@ pub(super) fn fallback_candidate(text: &str) -> ClaimCandidate {
 }
 
 fn extractor_instructions() -> &'static str {
-    "You are gBox's isolated claim extractor. Do not verify claims and do not use tools. Extract arbitrary independently checkable factual assertions, not opinions, requests, predictions, or instructions. Normalize each assertion into subject, predicate, object, asserted value, unit, temporal context, and location when present. Leave unknown fields null and preserve an exact source span. Return only JSON matching the supplied schema."
+    "You are gBox's isolated claim extractor. Do not verify claims and do not use tools. Extract only material, externally checkable claims about the world that the text presents as true or uses as the factual basis for an action. Exclude opinions, requests, predictions, plans, verification verdicts, arithmetic restatements, standalone source or record metadata, delivery or approval status, and system behavior. Do not extract a claim that the text explicitly labels false, contradicted, merely quoted, or presents only to refute. For a correction such as '17, not 42', emit only the affirmed value 17. Deduplicate repeated facts. When a report repeats one metric with a reporting period and an evidence 'as of' timestamp, emit only the reporting-period claim; the timestamp is evidence metadata, not a second claim. The predicate must name the canonical property or event being checked, preferably snake_case, such as production_database_users, revenue, or announced_policy; never use generic grammar verbs such as is, has, had, was, or said. Location means a geographic or jurisdictional place, not a system or database name. Normalize each assertion into subject, predicate, object, asserted value, unit, temporal context, and location when present. Leave unknown fields null and preserve an exact source span. Return only JSON matching the supplied schema."
 }
 
 pub(super) fn extraction_schema() -> Value {
@@ -131,7 +146,7 @@ pub(super) fn extraction_schema() -> Value {
         "properties": {
             "claims": {
                 "type": "array",
-                "maxItems": 12,
+                "maxItems": 6,
                 "items": {
                     "type": "object",
                     "additionalProperties": false,
@@ -140,12 +155,18 @@ pub(super) fn extraction_schema() -> Value {
                         "statement": {"type": "string"},
                         "claimType": {"type": "string", "enum": ["quantity", "event", "attribution", "status", "relationship", "other_factual"]},
                         "subject": {"type": ["string", "null"]},
-                        "predicate": {"type": ["string", "null"]},
+                        "predicate": {
+                            "type": ["string", "null"],
+                            "description": "Canonical checkable property or event, preferably snake_case; never a generic grammar verb."
+                        },
                         "object": {"type": ["string", "null"]},
                         "assertedValue": {"type": ["string", "null"]},
                         "unit": {"type": ["string", "null"]},
                         "temporalContext": {"type": ["string", "null"]},
-                        "location": {"type": ["string", "null"]},
+                        "location": {
+                            "type": ["string", "null"],
+                            "description": "Geographic or jurisdictional location only."
+                        },
                         "sourceSpan": {"type": "string"}
                     }
                 }

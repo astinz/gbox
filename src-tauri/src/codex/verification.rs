@@ -1,4 +1,5 @@
 use anyhow::{anyhow, Context, Result};
+use serde::Deserialize;
 use serde_json::{json, Value};
 
 use super::CodexSupervisor;
@@ -103,7 +104,7 @@ impl CodexSupervisor {
     ) -> Result<VerificationPlan> {
         let config = thread_config(
             &self.evidence_settings(),
-            &self.inherited_server_names(),
+            &self.inherited_server_disable_configs(),
             true,
         );
         let output = self
@@ -115,7 +116,9 @@ impl CodexSupervisor {
                 false,
             )
             .await?;
-        serde_json::from_str(&output).context("verification planner returned invalid JSON")
+        let model_plan: ModelVerificationPlan =
+            serde_json::from_str(&output).context("verification planner returned invalid JSON")?;
+        model_plan.try_into()
     }
 
     async fn verify_with_mcp(
@@ -221,7 +224,7 @@ impl CodexSupervisor {
     ) -> Result<ModelVerdict> {
         let config = thread_config(
             &self.evidence_settings(),
-            &self.inherited_server_names(),
+            &self.inherited_server_disable_configs(),
             true,
         );
         let output = self
@@ -246,7 +249,7 @@ impl CodexSupervisor {
             .as_deref()
             .context("web plan is missing a query")?;
         let settings = self.evidence_settings();
-        let mut config = thread_config(&settings, &self.inherited_server_names(), true);
+        let mut config = thread_config(&settings, &self.inherited_server_disable_configs(), true);
         config["web_search"] = Value::String(settings.web_search_mode.as_config().to_owned());
         let output = self
             .run_structured_turn(
@@ -291,6 +294,36 @@ impl CodexSupervisor {
             selected_plan: None,
             comparison_method: ComparisonMethod::ModelAssistedWeb,
             failures: Vec::new(),
+        })
+    }
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ModelVerificationPlan {
+    source_type: String,
+    server: Option<String>,
+    tool: Option<String>,
+    arguments_json: Option<String>,
+    query: Option<String>,
+    rationale: String,
+}
+
+impl TryFrom<ModelVerificationPlan> for VerificationPlan {
+    type Error = anyhow::Error;
+
+    fn try_from(plan: ModelVerificationPlan) -> Result<Self> {
+        let arguments = plan
+            .arguments_json
+            .map(|value| serde_json::from_str(&value).context("planner argumentsJson is invalid"))
+            .transpose()?;
+        Ok(Self {
+            source_type: plan.source_type,
+            server: plan.server,
+            tool: plan.tool,
+            arguments,
+            query: plan.query,
+            rationale: plan.rationale,
         })
     }
 }
@@ -359,5 +392,33 @@ mod tests {
         let content = preferred_tool_content(&response);
         assert_eq!(content, json!({"answer": 17}));
         assert_eq!(hash_value(&content).len(), 64);
+    }
+
+    #[test]
+    fn planner_arguments_are_parsed_from_a_strict_string_boundary() {
+        let model: ModelVerificationPlan = serde_json::from_value(json!({
+            "sourceType": "mcp",
+            "server": "company_data",
+            "tool": "company_get_metric",
+            "argumentsJson": "{\"company_id\":\"acme\"}",
+            "query": null,
+            "rationale": "authoritative company source"
+        }))
+        .expect("model plan");
+        let plan = VerificationPlan::try_from(model).expect("parsed plan");
+        assert_eq!(plan.arguments, Some(json!({"company_id": "acme"})));
+    }
+
+    #[test]
+    fn malformed_planner_arguments_fail_closed() {
+        let model = ModelVerificationPlan {
+            source_type: "mcp".to_owned(),
+            server: Some("company_data".to_owned()),
+            tool: Some("company_get_metric".to_owned()),
+            arguments_json: Some("not-json".to_owned()),
+            query: None,
+            rationale: "test".to_owned(),
+        };
+        assert!(VerificationPlan::try_from(model).is_err());
     }
 }

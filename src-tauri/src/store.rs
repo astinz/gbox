@@ -122,6 +122,17 @@ impl Store {
         Ok(event)
     }
 
+    pub fn structured_turn_events(&self, session_id: &str) -> Result<Vec<CodexEvent>> {
+        let connection = self.lock()?;
+        let mut statement = connection.prepare(
+            "SELECT * FROM events WHERE session_id = ?1 AND source = 'codex-internal' AND method IN ('item/completed', 'turn/completed') ORDER BY created_at DESC LIMIT 8",
+        )?;
+        let events = statement
+            .query_map(params![session_id], event_from_row)?
+            .collect::<rusqlite::Result<Vec<_>>>()?;
+        Ok(events)
+    }
+
     pub fn upsert_claim(
         &self,
         session_id: &str,

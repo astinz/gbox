@@ -28,6 +28,9 @@ const methodLabels = {
 export function ClaimDetail({ claim, evidence, failures }: Props) {
   const latest = evidence[0];
   const plan = latest?.selectedPlan;
+  const eligibleSources = latest?.eligibleSources ?? [];
+  const selectedSources = eligibleSources.filter((source) => planMatches(source, plan));
+  const otherSources = eligibleSources.filter((source) => !planMatches(source, plan));
 
   return (
     <aside className="claim-dossier" aria-label={`Verification detail for ${claim.statement}`}>
@@ -56,7 +59,7 @@ export function ClaimDetail({ claim, evidence, failures }: Props) {
               <ClaimField label="Value" value={joinValue(claim.assertedValue, claim.unit)} />
               <ClaimField label="When" value={claim.temporalContext} />
               <ClaimField label="Where" value={claim.location} />
-              <ClaimField label="Confidence" value={`${Math.round(claim.confidence * 100)}%`} />
+              <ClaimField label="Verdict confidence" value={`${Math.round(claim.confidence * 100)}%`} />
             </dl>
             <div className="source-span">
               <span>Exact source span</span>
@@ -90,20 +93,26 @@ export function ClaimDetail({ claim, evidence, failures }: Props) {
 
           <section className="dossier-section">
             <SectionHeading icon={DatabaseIcon} label="Eligible at decision time" />
-            {latest?.eligibleSources.length ? (
+            {eligibleSources.length ? (
               <div className="source-catalog">
-                {latest.eligibleSources.map((source) => (
-                  <div className="source-catalog__item" key={sourceKey(source)}>
-                    {source.sourceKind === "web_search" ? <Globe2Icon /> : <DatabaseIcon />}
-                    <div>
-                      <p>{source.tool ?? source.title}</p>
-                      <span>
-                        {source.server ?? "built-in"} · {source.pluginBacked ? "plugin MCP" : source.sourceKind}
-                      </span>
-                    </div>
-                    {planMatches(source, plan) && <Badge variant="secondary">selected</Badge>}
-                  </div>
+                <p className="source-catalog__count">
+                  {eligibleSources.length} read-only {eligibleSources.length === 1 ? "source was" : "sources were"} eligible.
+                </p>
+                {selectedSources.map((source) => (
+                  <SourceCatalogItem key={sourceKey(source)} source={source} selected />
                 ))}
+                {otherSources.length > 0 && (
+                  <details className="source-catalog__more">
+                    <summary>
+                      Inspect {otherSources.length} other eligible {otherSources.length === 1 ? "source" : "sources"}
+                    </summary>
+                    <div className="source-catalog__list">
+                      {otherSources.map((source) => (
+                        <SourceCatalogItem key={sourceKey(source)} source={source} selected={false} />
+                      ))}
+                    </div>
+                  </details>
+                )}
               </div>
             ) : (
               <EmptyDetail>No source-catalog snapshot is available.</EmptyDetail>
@@ -123,7 +132,7 @@ export function ClaimDetail({ claim, evidence, failures }: Props) {
                   <ClaimField label="Reference" value={latest.sourceReference} />
                   <ClaimField label="SHA-256" value={latest.resultHash} />
                 </dl>
-                <CodeDisclosure label="Raw stored evidence" value={latest.content ?? null} />
+                <CodeDisclosure label={evidencePayloadLabel(latest)} value={latest.content ?? null} />
               </>
             ) : (
               <EmptyDetail>No evidence has been stored for this claim.</EmptyDetail>
@@ -190,6 +199,33 @@ function planLabel(plan: NonNullable<Evidence["selectedPlan"]>): string {
 
 function sourceKey(source: Evidence["eligibleSources"][number]): string {
   return `${source.sourceKind}:${source.server ?? "built-in"}:${source.tool ?? source.title}`;
+}
+
+function SourceCatalogItem({
+  source,
+  selected,
+}: {
+  source: Evidence["eligibleSources"][number];
+  selected: boolean;
+}) {
+  return (
+    <div className="source-catalog__item">
+      {source.sourceKind === "web_search" ? <Globe2Icon /> : <DatabaseIcon />}
+      <div>
+        <p>{source.tool ?? source.title}</p>
+        <span>
+          {source.server ?? "built-in"} · {source.pluginBacked ? "plugin MCP" : source.sourceKind}
+        </span>
+      </div>
+      {selected && <Badge variant="secondary">selected</Badge>}
+    </div>
+  );
+}
+
+function evidencePayloadLabel(evidence: Evidence): string {
+  return evidence.comparisonMethod === "model_assisted_web"
+    ? "Stored verifier output (not a page snapshot)"
+    : "Raw stored evidence";
 }
 
 function planMatches(

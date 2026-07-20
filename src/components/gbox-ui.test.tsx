@@ -118,6 +118,13 @@ describe("gBox interface", () => {
             inputSchema: {},
             readOnly: true,
             pluginBacked: true,
+          }, {
+            sourceKind: "web_search",
+            title: "Codex web search",
+            description: "Search public sources",
+            inputSchema: {},
+            readOnly: true,
+            pluginBacked: false,
           }],
           selectedPlan: {
             sourceType: "mcp",
@@ -143,6 +150,8 @@ describe("gBox interface", () => {
     expect(screen.getAllByText("Deterministic adapter")).not.toHaveLength(0);
     expect(screen.getByText("An earlier source attempt timed out.")).toBeInTheDocument();
     expect(screen.getByText("Raw stored evidence")).toBeInTheDocument();
+    expect(screen.getByText("2 read-only sources were eligible.")).toBeInTheDocument();
+    expect(screen.getByText("Inspect 1 other eligible source")).toBeInTheDocument();
   });
 
   it("exposes the global observation consent control", () => {

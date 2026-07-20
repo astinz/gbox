@@ -11,12 +11,12 @@ use std::{
 
 use anyhow::{anyhow, Context, Result};
 use semver::Version;
-use serde_json::{json, Value};
+use serde_json::{json, Map, Value};
 use tauri::{AppHandle, Emitter};
 use tokio::{
     io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
     process::{Child, ChildStdin, Command},
-    sync::{broadcast, oneshot, Mutex},
+    sync::{oneshot, Mutex},
     time::{timeout, Duration},
 };
 
@@ -37,7 +37,6 @@ struct RuntimeHandle {
     writer: Arc<Mutex<ChildStdin>>,
     child: Arc<Mutex<Child>>,
     pending: Arc<Mutex<HashMap<u64, oneshot::Sender<Value>>>>,
-    events: broadcast::Sender<Value>,
 }
 
 pub struct CodexSupervisor {
@@ -47,13 +46,14 @@ pub struct CodexSupervisor {
     next_id: AtomicU64,
     connected: Arc<AtomicBool>,
     internal_threads: Arc<Mutex<HashSet<String>>>,
+    structured_turn_lock: Mutex<()>,
     active_turns: Arc<Mutex<HashMap<String, String>>>,
     plugin_installed: Arc<AtomicBool>,
     hooks_trusted: Arc<AtomicBool>,
     evidence_source_count: Arc<AtomicUsize>,
     evidence_settings: StdRwLock<EvidenceSettings>,
     evidence_sources: StdRwLock<Vec<EvidenceSource>>,
-    inherited_server_names: StdRwLock<Vec<String>>,
+    inherited_server_disable_configs: StdRwLock<Map<String, Value>>,
 }
 
 impl CodexSupervisor {
@@ -71,13 +71,14 @@ impl CodexSupervisor {
             next_id: AtomicU64::new(1),
             connected: Arc::new(AtomicBool::new(false)),
             internal_threads: Arc::new(Mutex::new(HashSet::new())),
+            structured_turn_lock: Mutex::new(()),
             active_turns: Arc::new(Mutex::new(HashMap::new())),
             plugin_installed: Arc::new(AtomicBool::new(plugin_is_installed())),
             hooks_trusted: Arc::new(AtomicBool::new(false)),
             evidence_source_count: Arc::new(AtomicUsize::new(0)),
             evidence_settings: StdRwLock::new(evidence_settings),
             evidence_sources: StdRwLock::new(Vec::new()),
-            inherited_server_names: StdRwLock::new(Vec::new()),
+            inherited_server_disable_configs: StdRwLock::new(Map::new()),
         })
     }
 
@@ -89,7 +90,7 @@ impl CodexSupervisor {
         self.ensure_started().await?;
         let config = thread_config(
             &self.evidence_settings(),
-            &self.inherited_server_names(),
+            &self.inherited_server_disable_configs(),
             false,
         );
         let thread = self
@@ -274,10 +275,10 @@ impl CodexSupervisor {
         Ok(sources)
     }
 
-    fn inherited_server_names(&self) -> Vec<String> {
-        self.inherited_server_names
+    fn inherited_server_disable_configs(&self) -> Map<String, Value> {
+        self.inherited_server_disable_configs
             .read()
-            .map(|names| names.clone())
+            .map(|configs| configs.clone())
             .unwrap_or_default()
     }
 
@@ -310,12 +311,10 @@ impl CodexSupervisor {
             .stderr
             .take()
             .context("app-server stderr unavailable")?;
-        let (events, _) = broadcast::channel(512);
         let runtime = RuntimeHandle {
             writer: Arc::new(Mutex::new(stdin)),
             child: Arc::new(Mutex::new(child)),
             pending: Arc::new(Mutex::new(HashMap::new())),
-            events,
         };
         *self.runtime.lock().await = Some(runtime.clone());
         self.connected.store(true, Ordering::Relaxed);
@@ -380,7 +379,6 @@ impl CodexSupervisor {
                         let _ = write_json(&runtime.writer, &response).await;
                     }
                 }
-                let _ = runtime.events.send(message.clone());
                 if let Some(supervisor) = weak.upgrade() {
                     supervisor.handle_notification(message);
                 }
@@ -418,10 +416,7 @@ impl CodexSupervisor {
                 .and_then(Value::as_str)
                 .unwrap_or("app-server/unknown");
             let params = message.get("params").cloned().unwrap_or(Value::Null);
-            let session_id = params
-                .get("threadId")
-                .and_then(Value::as_str)
-                .map(str::to_owned);
+            let session_id = notification_thread_id(&params).map(str::to_owned);
             let internal = if let Some(session) = &session_id {
                 self.internal_threads.lock().await.contains(session)
             } else {
@@ -456,7 +451,7 @@ impl CodexSupervisor {
             }
             if method == "item/completed" && !internal {
                 let item = params.get("item").unwrap_or(&Value::Null);
-                if item.get("type").and_then(Value::as_str) == Some("agentMessage") {
+                if is_final_agent_message(item) {
                     if let (Some(session), Some(text)) =
                         (session_id, item.get("text").and_then(Value::as_str))
                     {
@@ -508,7 +503,7 @@ impl CodexSupervisor {
     async fn create_verifier_thread(&self) -> Result<String> {
         let config = thread_config(
             &self.evidence_settings(),
-            &self.inherited_server_names(),
+            &self.inherited_server_disable_configs(),
             false,
         );
         let thread = self
@@ -533,15 +528,12 @@ impl CodexSupervisor {
     }
 
     async fn refresh_integration_status(&self, thread_id: Option<&str>) {
+        if let Ok(configs) = configured_mcp_server_disable_configs().await {
+            if let Ok(mut current) = self.inherited_server_disable_configs.write() {
+                *current = configs;
+            }
+        }
         if let Ok(response) = self.list_mcp_server_status(thread_id).await {
-            let names = response
-                .get("data")
-                .and_then(Value::as_array)
-                .into_iter()
-                .flatten()
-                .filter_map(|server| server.get("name").and_then(Value::as_str))
-                .map(str::to_owned)
-                .collect::<Vec<_>>();
             let text = response.to_string().to_ascii_lowercase();
             let gbox_plugin_ready = text.contains("company_data") || text.contains("company-data");
             let mut sources = sources_from_status(&response, &self.evidence_settings());
@@ -559,9 +551,6 @@ impl CodexSupervisor {
                 .store(sources.len(), Ordering::Relaxed);
             if let Ok(mut current) = self.evidence_sources.write() {
                 *current = sources;
-            }
-            if let Ok(mut current) = self.inherited_server_names.write() {
-                *current = names;
             }
             self.plugin_installed
                 .store(gbox_plugin_ready, Ordering::Relaxed);
@@ -621,6 +610,37 @@ impl CodexSupervisor {
         let id = self.next_id.fetch_add(1, Ordering::Relaxed);
         let result = self.request_id_on(&runtime, id, method, params).await?;
         Ok((id, result))
+    }
+
+    async fn begin_request(
+        &self,
+        method: &str,
+        params: Value,
+    ) -> Result<(u64, oneshot::Receiver<Value>)> {
+        let runtime = self
+            .runtime
+            .lock()
+            .await
+            .clone()
+            .ok_or_else(|| anyhow!("app-server is not connected"))?;
+        let id = self.next_id.fetch_add(1, Ordering::Relaxed);
+        let (sender, receiver) = oneshot::channel();
+        runtime.pending.lock().await.insert(id, sender);
+        let writer = runtime.writer.clone();
+        let pending = runtime.pending.clone();
+        let message = json!({ "id": id, "method": method, "params": params });
+        tokio::spawn(async move {
+            if write_json(&writer, &message).await.is_err() {
+                pending.lock().await.remove(&id);
+            }
+        });
+        Ok((id, receiver))
+    }
+
+    async fn abandon_request(&self, id: u64) {
+        if let Some(runtime) = self.runtime.lock().await.clone() {
+            runtime.pending.lock().await.remove(&id);
+        }
     }
 
     async fn request_on(
@@ -686,7 +706,6 @@ async fn write_json(writer: &Arc<Mutex<ChildStdin>>, message: &Value) -> Result<
     let mut writer = writer.lock().await;
     writer.write_all(message.to_string().as_bytes()).await?;
     writer.write_all(b"\n").await?;
-    writer.flush().await?;
     Ok(())
 }
 
@@ -702,6 +721,13 @@ fn response_id(message: &Value) -> Option<u64> {
     (message.get("method").is_none())
         .then(|| message.get("id").and_then(Value::as_u64))
         .flatten()
+}
+
+fn notification_thread_id(params: &Value) -> Option<&str> {
+    params
+        .get("threadId")
+        .and_then(Value::as_str)
+        .or_else(|| params.pointer("/thread/id").and_then(Value::as_str))
 }
 
 fn resolve_codex_binary() -> Result<PathBuf> {
@@ -745,6 +771,71 @@ fn codex_version(binary: &Path) -> Result<Version> {
         .find_map(|part| Version::parse(part).ok())
         .ok_or_else(|| anyhow!("unable to parse Codex version from {stdout}"))?;
     Ok(version)
+}
+
+async fn configured_mcp_server_disable_configs() -> Result<Map<String, Value>> {
+    let binary = resolve_codex_binary()?;
+    let output = Command::new(binary)
+        .args(["mcp", "list", "--json"])
+        .output()
+        .await
+        .context("failed to run codex mcp list --json")?;
+    if !output.status.success() {
+        return Err(anyhow!(
+            "codex mcp list --json exited with {}",
+            output.status
+        ));
+    }
+    parse_configured_mcp_server_disable_configs(&output.stdout)
+}
+
+fn parse_configured_mcp_server_disable_configs(output: &[u8]) -> Result<Map<String, Value>> {
+    let servers: Value = serde_json::from_slice(output).context("invalid Codex MCP list JSON")?;
+    servers
+        .as_array()
+        .context("Codex MCP list must be an array")?
+        .iter()
+        .map(disabled_mcp_server_config)
+        .collect()
+}
+
+fn disabled_mcp_server_config(server: &Value) -> Result<(String, Value)> {
+    let name = server
+        .get("name")
+        .and_then(Value::as_str)
+        .context("Codex MCP server has no name")?
+        .to_owned();
+    let transport = server
+        .get("transport")
+        .and_then(Value::as_object)
+        .context("Codex MCP server has no transport")?;
+    let mut config = Map::from_iter([("enabled".to_owned(), Value::Bool(false))]);
+    match transport.get("type").and_then(Value::as_str) {
+        Some("stdio") => {
+            copy_config_field(transport, &mut config, "command");
+            copy_config_field(transport, &mut config, "args");
+            copy_config_field(transport, &mut config, "cwd");
+            copy_config_field(transport, &mut config, "env_vars");
+        }
+        Some("streamable_http") => {
+            copy_config_field(transport, &mut config, "url");
+            copy_config_field(transport, &mut config, "bearer_token_env_var");
+        }
+        Some(other) => return Err(anyhow!("unsupported Codex MCP transport: {other}")),
+        None => return Err(anyhow!("Codex MCP transport has no type")),
+    }
+    Ok((name, Value::Object(config)))
+}
+
+fn copy_config_field(source: &Map<String, Value>, target: &mut Map<String, Value>, key: &str) {
+    if let Some(value) = source.get(key).filter(|value| !value.is_null()) {
+        target.insert(key.to_owned(), value.clone());
+    }
+}
+
+fn is_final_agent_message(item: &Value) -> bool {
+    item.get("type").and_then(Value::as_str) == Some("agentMessage")
+        && item.get("phase").and_then(Value::as_str) == Some("final_answer")
 }
 
 fn hosted_instructions() -> &'static str {
@@ -813,60 +904,4 @@ fn gbox_hooks_are_trusted(response: &Value) -> bool {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn extraction_schema_is_strict() {
-        let schema = extraction::extraction_schema();
-        assert_eq!(schema["additionalProperties"], Value::Bool(false));
-        assert_eq!(
-            schema["properties"]["claims"]["items"]["additionalProperties"],
-            Value::Bool(false)
-        );
-        assert!(schema["properties"]["claims"]["items"]["properties"]
-            .get("subject")
-            .is_some());
-        assert!(schema["properties"]["claims"]["items"]["properties"]
-            .get("companyId")
-            .is_none());
-    }
-
-    #[test]
-    fn version_parser_accepts_installed_shape() {
-        let version = Version::parse("0.144.4").expect("version");
-        assert!(version >= Version::parse(MIN_CODEX_VERSION).expect("minimum"));
-    }
-
-    #[test]
-    fn parses_jsonl_and_correlates_only_responses() {
-        let response =
-            parse_app_server_line(r#"{"id":7,"result":{"ok":true}}"#).expect("response frame");
-        let notification =
-            parse_app_server_line(r#"{"method":"future/unknown","params":{"extra":true}}"#)
-                .expect("notification frame");
-        assert_eq!(response_id(&response), Some(7));
-        assert_eq!(response_id(&notification), None);
-        assert_eq!(
-            event_summary("future/unknown", &notification["params"]),
-            "future · unknown"
-        );
-        assert!(parse_app_server_line("[]").is_err());
-    }
-
-    #[test]
-    fn requires_every_gbox_hook_to_be_enabled_and_trusted() {
-        let trusted = json!({"data": [{"hooks": [
-            {"pluginId": "gbox-control@gbox-local", "enabled": true, "trustStatus": "trusted"},
-            {"pluginId": "gbox-control@gbox-local", "enabled": true, "trustStatus": "trusted"},
-            {"pluginId": "gbox-control@gbox-local", "enabled": true, "trustStatus": "trusted"}
-        ]}]});
-        assert!(gbox_hooks_are_trusted(&trusted));
-        let modified = json!({"data": [{"hooks": [
-            {"pluginId": "gbox-control@gbox-local", "enabled": true, "trustStatus": "trusted"},
-            {"pluginId": "gbox-control@gbox-local", "enabled": true, "trustStatus": "modified"},
-            {"pluginId": "gbox-control@gbox-local", "enabled": true, "trustStatus": "trusted"}
-        ]}]});
-        assert!(!gbox_hooks_are_trusted(&modified));
-    }
-}
+mod tests;

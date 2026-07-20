@@ -173,7 +173,7 @@
   .risk--high { @apply border-red-200 bg-red-100 text-red-800; }
   .risk--caution { @apply border-amber-200 bg-amber-100 text-amber-900; }
   .risk--low { @apply border-emerald-200 bg-emerald-100 text-emerald-800; }
-  .verification-workbench { @apply grid items-start gap-3 xl:grid-cols-[minmax(0,0.92fr)_minmax(430px,1.08fr)]; }
+  .verification-workbench { @apply grid items-start gap-3 lg:grid-cols-[minmax(0,0.92fr)_minmax(430px,1.08fr)]; }
   .claim-index { @apply min-w-0; }
   .claim-select { @apply block w-full rounded-sm text-left outline-none focus-visible:ring-2 focus-visible:ring-ring; }
   .claim-select span { @apply block font-medium leading-snug; }
@@ -201,10 +201,14 @@
   .route-node--selected { @apply border-foreground bg-foreground text-background; }
   .route-rationale { @apply mt-3 text-sm leading-relaxed text-muted-foreground; }
   .source-catalog { @apply grid gap-1.5; }
+  .source-catalog__count { @apply mb-1 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground; }
   .source-catalog__item { @apply grid grid-cols-[18px_minmax(0,1fr)_auto] items-center gap-2 rounded-md border bg-background/50 px-3 py-2; }
   .source-catalog__item > svg { @apply size-3.5 text-muted-foreground; }
   .source-catalog__item p { @apply truncate font-mono text-[11px] font-semibold; }
   .source-catalog__item span { @apply block truncate font-mono text-[9px] uppercase tracking-wider text-muted-foreground; }
+  .source-catalog__more { @apply overflow-hidden rounded-md border border-dashed bg-background/50; }
+  .source-catalog__more > summary { @apply cursor-pointer px-3 py-2 font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground; }
+  .source-catalog__list { @apply grid gap-1.5 border-t p-1.5; }
   .evidence-summary { @apply rounded-md border-l-4 border-l-accent bg-muted/50 px-3 py-2.5; }
   .evidence-summary > span { @apply font-mono text-[10px] font-semibold uppercase tracking-wider; }
   .evidence-summary p { @apply mt-1 text-sm leading-relaxed; }

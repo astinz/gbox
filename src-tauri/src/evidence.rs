@@ -109,13 +109,14 @@ pub fn validate_settings(settings: &EvidenceSettings) -> Result<()> {
 
 pub fn thread_config(
     settings: &EvidenceSettings,
-    inherited_server_names: &[String],
+    inherited_server_disable_configs: &Map<String, Value>,
     disable_all_mcp: bool,
 ) -> Value {
     let mut servers = Map::new();
-    if disable_all_mcp || !settings.use_codex_mcp_config {
-        for name in inherited_server_names {
-            servers.insert(name.clone(), json!({"enabled": false}));
+    let disable_inherited = disable_all_mcp || !settings.use_codex_mcp_config;
+    if disable_inherited {
+        for (name, config) in inherited_server_disable_configs {
+            servers.insert(name.clone(), config.clone());
         }
     }
     if !disable_all_mcp {
@@ -123,11 +124,15 @@ pub fn thread_config(
             servers.insert(server.name.clone(), configured_server_value(server));
         }
     }
-    json!({
+    let mut config = json!({
         "web_search": if disable_all_mcp { "disabled" } else { settings.web_search_mode.as_config() },
         "features": {"shell_tool": false},
         "mcp_servers": servers,
-    })
+    });
+    if disable_inherited {
+        config["apps"] = json!({"_default": {"enabled": false}});
+    }
+    config
 }
 
 pub fn sources_from_status(response: &Value, settings: &EvidenceSettings) -> Vec<EvidenceSource> {
@@ -211,7 +216,7 @@ pub fn validate_plan(plan: &VerificationPlan, sources: &[EvidenceSource]) -> Res
 
 pub fn planner_prompt(candidate: &ClaimCandidate, sources: &[EvidenceSource]) -> Result<String> {
     Ok(format!(
-        "Choose exactly one safe evidence source for this claim. Prefer a narrow authoritative MCP tool over web search. Use none when no source can answer. Never select a write-capable tool. Construct arguments only from the claim; do not invent identifiers.\n\nCLAIM:\n{}\n\nELIGIBLE SOURCES:\n{}",
+        "Choose exactly one safe evidence source for this claim. Prefer a narrow authoritative MCP tool over web search. Use none when no source can answer. Never select a write-capable tool. For MCP, put a compact JSON object string in argumentsJson, constructed only from the claim; do not invent identifiers. Use null for non-MCP routes.\n\nCLAIM:\n{}\n\nELIGIBLE SOURCES:\n{}",
         serde_json::to_string_pretty(candidate)?,
         serde_json::to_string_pretty(sources)?,
     ))
@@ -236,12 +241,12 @@ pub fn planner_schema() -> Value {
     json!({
         "type": "object",
         "additionalProperties": false,
-        "required": ["sourceType", "server", "tool", "arguments", "query", "rationale"],
+        "required": ["sourceType", "server", "tool", "argumentsJson", "query", "rationale"],
         "properties": {
             "sourceType": {"type": "string", "enum": ["mcp", "web_search", "none"]},
             "server": {"type": ["string", "null"]},
             "tool": {"type": ["string", "null"]},
-            "arguments": {"type": ["object", "null"]},
+            "argumentsJson": {"type": ["string", "null"]},
             "query": {"type": ["string", "null"]},
             "rationale": {"type": "string"}
         }
@@ -480,7 +485,11 @@ mod tests {
         assert!(sources_from_status(&status, &settings)
             .iter()
             .all(|source| source.server.as_deref() != Some("inherited")));
-        let config = thread_config(&settings, &["inherited".to_owned()], false);
+        let inherited = Map::from_iter([(
+            "inherited".to_owned(),
+            json!({"enabled": false, "command": "inherited-mcp"}),
+        )]);
+        let config = thread_config(&settings, &inherited, false);
         assert_eq!(
             config["mcp_servers"]["inherited"]["enabled"],
             Value::Bool(false)
@@ -489,6 +498,39 @@ mod tests {
             config["mcp_servers"]["custom"]["command"],
             Value::String("custom-mcp".to_owned())
         );
+        assert_eq!(config["apps"]["_default"]["enabled"], Value::Bool(false));
+    }
+
+    #[test]
+    fn extraction_isolates_configured_mcp_and_app_tools() {
+        let inherited = Map::from_iter([
+            (
+                "company_data".to_owned(),
+                json!({"enabled": false, "command": "company-mcp"}),
+            ),
+            (
+                "openaiDeveloperDocs".to_owned(),
+                json!({"enabled": false, "url": "https://developers.openai.com/mcp"}),
+            ),
+        ]);
+        let config = thread_config(&EvidenceSettings::default(), &inherited, true);
+        assert_eq!(
+            config["mcp_servers"]["company_data"]["enabled"],
+            Value::Bool(false)
+        );
+        assert_eq!(
+            config["mcp_servers"]["openaiDeveloperDocs"]["enabled"],
+            Value::Bool(false)
+        );
+        assert_eq!(config["apps"]["_default"]["enabled"], Value::Bool(false));
+        assert_eq!(config["web_search"], Value::String("disabled".to_owned()));
+        assert_eq!(
+            config["mcp_servers"]["company_data"]["command"],
+            Value::String("company-mcp".to_owned())
+        );
+        assert!(config["mcp_servers"]["openaiDeveloperDocs"]
+            .get("command")
+            .is_none());
     }
 
     #[test]

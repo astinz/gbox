@@ -16,6 +16,34 @@ fn sample_candidate(value: &str) -> ClaimCandidate {
     }
 }
 
+#[test]
+fn reads_only_structured_events_for_the_requested_thread() {
+    let store = Store::open_memory().expect("store");
+    store
+        .insert_event(
+            Some("internal-thread"),
+            "item/completed",
+            "complete",
+            &json!({"item": {"type": "agentMessage", "phase": "final_answer"}}),
+            "codex-internal",
+        )
+        .expect("internal event");
+    store
+        .insert_event(
+            Some("other-thread"),
+            "item/completed",
+            "other",
+            &json!({}),
+            "codex-internal",
+        )
+        .expect("other event");
+    let events = store
+        .structured_turn_events("internal-thread")
+        .expect("structured events");
+    assert_eq!(events.len(), 1);
+    assert_eq!(events[0].session_id.as_deref(), Some("internal-thread"));
+}
+
 fn approved_action(store: &Store) -> (PendingAction, String) {
     store
         .create_session("session", "test", None)
