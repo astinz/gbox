@@ -17,9 +17,10 @@ import type { SystemStatus } from "@/types/gbox";
 type Props = {
   status: SystemStatus;
   onObservationChange: (enabled: boolean) => void;
+  onLaunchAtLoginChange: (enabled: boolean) => void;
 };
 
-export function StatusBoard({ status, onObservationChange }: Props) {
+export function StatusBoard({ status, onObservationChange, onLaunchAtLoginChange }: Props) {
   const checks = [
     { label: "Codex CLI", value: status.codexSupported, icon: BinaryIcon, detail: status.codexVersion ?? "not found" },
     { label: "App Server", value: status.appServerConnected, icon: CableIcon, detail: status.appServerConnected ? "JSONL connected" : "starts on first live task" },
@@ -69,6 +70,28 @@ export function StatusBoard({ status, onObservationChange }: Props) {
             onCheckedChange={onObservationChange}
           />
         </Field>
+        <Field orientation="horizontal" className="consent-field">
+          <FieldContent>
+            <FieldTitle>Launch gBox at login</FieldTitle>
+            <FieldDescription>
+              Starts the background observer with its window hidden. This setting is independent of observation.
+            </FieldDescription>
+          </FieldContent>
+          <Switch
+            aria-label="Launch gBox at login"
+            checked={status.launchAtLogin}
+            onCheckedChange={onLaunchAtLoginChange}
+          />
+        </Field>
+        {status.globalObservation && !status.notificationsAvailable && (
+          <Alert>
+            <CircleAlertIcon />
+            <AlertTitle>Native notifications unavailable</AlertTitle>
+            <AlertDescription>
+              Observation remains active. Completed checks will stay visible in gBox.
+            </AlertDescription>
+          </Alert>
+        )}
         {!status.receiptChainValid && (
           <Alert variant="destructive">
             <CircleAlertIcon />

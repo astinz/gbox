@@ -5,6 +5,7 @@ import type { LiveActivitySource } from "@/lib/live-activity";
 import type { CodexEvent } from "@/types/gbox";
 import { emptySnapshot, type DashboardSnapshot } from "@/types/gbox";
 import type { EvidenceSettings } from "@/types/gbox";
+import { useObservationNotifications } from "@/hooks/use-observation-notifications";
 
 export function useGbox() {
   const [snapshot, setSnapshot] = useState<DashboardSnapshot>(emptySnapshot);
@@ -56,6 +57,8 @@ export function useGbox() {
     }
   }, [refresh]);
 
+  const notifications = useObservationNotifications(snapshot.recentObservations, refresh);
+
   return useMemo(
     () => ({
       snapshot,
@@ -65,6 +68,9 @@ export function useGbox() {
       activityStartedAt,
       activitySource,
       activityEvents,
+      notificationPermission: notifications.notificationPermission,
+      notificationTarget: notifications.notificationTarget,
+      clearNotificationTarget: notifications.clearNotificationTarget,
       clearError: () => setError(undefined),
       startReplay: () => {
         setActivityStartedAt(new Date().toISOString());
@@ -86,14 +92,30 @@ export function useGbox() {
         setActivityEvents([]);
         return run(() => gboxApi.sendPrompt(sessionId, prompt));
       },
-      setGlobalObservation: (enabled: boolean) =>
-        run(() => gboxApi.setGlobalObservation(enabled)),
+      setGlobalObservation: async (enabled: boolean) => {
+        if (enabled) await notifications.requestNotificationPermission();
+        return run(() => gboxApi.setGlobalObservation(enabled));
+      },
+      setLaunchAtLogin: (enabled: boolean) =>
+        run(() => gboxApi.setLaunchAtLogin(enabled)),
+      retryObservation: (observationId: string) =>
+        run(() => gboxApi.retryObservation(observationId)),
       updateEvidenceSettings: (settings: EvidenceSettings) =>
         run(() => gboxApi.updateEvidenceSettings(settings)),
       resolveAction: (actionId: string, decision: "approve" | "deny") =>
         run(() => gboxApi.resolveAction(actionId, decision)),
     }),
-    [snapshot, sessionId, busy, error, activityStartedAt, activitySource, activityEvents, run],
+    [
+      snapshot,
+      sessionId,
+      busy,
+      error,
+      activityStartedAt,
+      activitySource,
+      activityEvents,
+      notifications,
+      run,
+    ],
   );
 }
 

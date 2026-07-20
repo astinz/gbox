@@ -5,6 +5,8 @@ import type {
   DashboardSnapshot,
   CodexEvent,
   EvidenceSettings,
+  NotificationState,
+  Observation,
   PendingAction,
   SystemStatus,
 } from "@/types/gbox";
@@ -28,6 +30,14 @@ export const gboxApi = {
     invoke("resolve_action", { input: { actionId, decision } }),
   setGlobalObservation: (enabled: boolean) =>
     invoke<SystemStatus>("set_global_observation", { enabled }),
+  setLaunchAtLogin: (enabled: boolean) =>
+    invoke<SystemStatus>("set_launch_at_login", { enabled }),
+  setNotificationsAvailable: (available: boolean) =>
+    invoke<SystemStatus>("set_notifications_available", { available }),
+  markObservationNotified: (observationId: string, notificationState: NotificationState) =>
+    invoke<Observation>("mark_observation_notified", { observationId, notificationState }),
+  retryObservation: (observationId: string) =>
+    invoke<Observation>("retry_observation", { observationId }),
   updateEvidenceSettings: (settings: EvidenceSettings) =>
     invoke<DashboardSnapshot>("update_evidence_settings", { input: { settings } }),
 };
@@ -38,6 +48,9 @@ const refreshEvents = [
   "gbox://claim-updated",
   "gbox://approval-requested",
   "gbox://receipt-created",
+  "gbox://observation-queued",
+  "gbox://observation-completed",
+  "gbox://observation-failed",
 ] as const;
 
 export async function listenForGboxChanges(

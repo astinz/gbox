@@ -7,6 +7,46 @@ export type ActionState =
   | "Failed"
   | "Expired";
 
+export type ObservationState = "Pending" | "Processing" | "Completed" | "Failed";
+export type NotificationState =
+  | "Pending"
+  | "Sent"
+  | "Suppressed"
+  | "Failed"
+  | "NotRequired";
+
+export type ObservationVerdictCounts = {
+  verified: number;
+  contradicted: number;
+  unverifiable: number;
+};
+
+export type NotificationTarget = {
+  observationId: string;
+  primaryClaimId: string;
+};
+
+export type Observation = {
+  id: string;
+  sessionId: string;
+  turnId?: string;
+  cwd?: string;
+  source: string;
+  messageHash: string;
+  messageExcerpt: string;
+  state: ObservationState;
+  attempts: number;
+  failure?: string;
+  primaryClaimId?: string;
+  verdictCounts: ObservationVerdictCounts;
+  notificationState: NotificationState;
+  notificationTarget?: NotificationTarget;
+  createdAt: string;
+  startedAt?: string;
+  completedAt?: string;
+  notifiedAt?: string;
+};
+
 export type Claim = {
   id: string;
   sessionId: string;
@@ -121,6 +161,10 @@ export type SystemStatus = {
   evidenceSourcesReady: boolean;
   evidenceSourceCount: number;
   globalObservation: boolean;
+  observationWorkerHealthy: boolean;
+  observationQueueDepth: number;
+  notificationsAvailable: boolean;
+  launchAtLogin: boolean;
   receiptChainValid: boolean;
   replayMode: boolean;
   diagnostic?: string;
@@ -137,6 +181,8 @@ export type DashboardSnapshot = {
   evidenceSettings: EvidenceSettings;
   evidenceSources: EvidenceSource[];
   verificationFailures: VerificationFailure[];
+  recentObservations: Observation[];
+  observationQueueDepth: number;
 };
 
 export type WebSearchMode = "disabled" | "cached" | "live";
@@ -186,6 +232,10 @@ export const emptySnapshot: DashboardSnapshot = {
     evidenceSourcesReady: false,
     evidenceSourceCount: 0,
     globalObservation: false,
+    observationWorkerHealthy: false,
+    observationQueueDepth: 0,
+    notificationsAvailable: false,
+    launchAtLogin: false,
     receiptChainValid: true,
     replayMode: false,
   },
@@ -202,4 +252,6 @@ export const emptySnapshot: DashboardSnapshot = {
   },
   evidenceSources: [],
   verificationFailures: [],
+  recentObservations: [],
+  observationQueueDepth: 0,
 };

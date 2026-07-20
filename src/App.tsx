@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { CircleAlertIcon } from "lucide-react";
 
 import { AppHeader, type AppScreen } from "@/components/app-header";
@@ -12,6 +12,10 @@ function App() {
   const gbox = useGbox();
   const [screen, setScreen] = useState<AppScreen>("dashboard");
   const pendingAction = gbox.snapshot.actions.find((action) => action.state === "Pending");
+
+  useEffect(() => {
+    if (gbox.notificationTarget) setScreen("dashboard");
+  }, [gbox.notificationTarget]);
 
   return (
     <main className="app-shell">
@@ -33,6 +37,8 @@ function App() {
           activityStartedAt={gbox.activityStartedAt}
           activitySource={gbox.activitySource}
           activityEvents={gbox.activityEvents}
+          notificationClaimId={gbox.notificationTarget?.primaryClaimId}
+          onNotificationOpened={gbox.clearNotificationTarget}
           onStartLive={(cwd, prompt) => void gbox.startLive(cwd, prompt)}
           onContinue={(prompt) => void gbox.sendPrompt(prompt)}
           onReplay={() => void gbox.startReplay()}
@@ -42,6 +48,7 @@ function App() {
           snapshot={gbox.snapshot}
           busy={gbox.busy}
           onObservationChange={(enabled) => void gbox.setGlobalObservation(enabled)}
+          onLaunchAtLoginChange={(enabled) => void gbox.setLaunchAtLogin(enabled)}
           onSaveEvidence={(settings) => void gbox.updateEvidenceSettings(settings)}
         />
       )}

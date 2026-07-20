@@ -20,6 +20,8 @@ pub struct ApplicationState {
     pub observations: Arc<ObservationService>,
     replay_mode: AtomicBool,
     global_observation: AtomicBool,
+    notifications_available: AtomicBool,
+    launch_at_login: AtomicBool,
 }
 
 impl ApplicationState {
@@ -28,6 +30,7 @@ impl ApplicationState {
         codex: Arc<CodexSupervisor>,
         gate: Arc<ActionGate>,
         observations: Arc<ObservationService>,
+        launch_at_login: bool,
     ) -> Arc<Self> {
         let global_observation = store
             .get_setting("global_observation")
@@ -41,6 +44,8 @@ impl ApplicationState {
             observations,
             replay_mode: AtomicBool::new(false),
             global_observation: AtomicBool::new(global_observation),
+            notifications_available: AtomicBool::new(false),
+            launch_at_login: AtomicBool::new(launch_at_login),
         })
     }
 
@@ -49,6 +54,8 @@ impl ApplicationState {
         status.global_observation = self.global_observation.load(Ordering::Relaxed);
         status.observation_worker_healthy = self.observations.healthy();
         status.observation_queue_depth = self.store.observation_queue_depth().unwrap_or(0);
+        status.notifications_available = self.notifications_available.load(Ordering::Relaxed);
+        status.launch_at_login = self.launch_at_login.load(Ordering::Relaxed);
         status.replay_mode = self.replay_mode.load(Ordering::Relaxed);
         status.receipt_chain_valid = self.store.verify_receipt_chain().unwrap_or(false);
         status
@@ -80,6 +87,27 @@ impl ApplicationState {
 
     pub fn global_observation(&self) -> bool {
         self.global_observation.load(Ordering::Relaxed)
+    }
+
+    pub fn set_notifications_available(&self, available: bool) -> SystemStatus {
+        self.notifications_available
+            .store(available, Ordering::Relaxed);
+        self.status()
+    }
+
+    pub fn set_launch_at_login(&self, enabled: bool) -> Result<SystemStatus> {
+        self.launch_at_login.store(enabled, Ordering::Relaxed);
+        self.store
+            .set_setting("launch_at_login_configured", "true")?;
+        Ok(self.status())
+    }
+
+    pub fn launch_at_login_configured(&self) -> bool {
+        self.store
+            .get_setting("launch_at_login_configured")
+            .ok()
+            .flatten()
+            .is_some_and(|value| value == "true")
     }
 
     pub fn set_replay_mode(&self, enabled: bool) {

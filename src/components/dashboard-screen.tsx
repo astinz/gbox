@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { ActionHistory } from "@/components/action-history";
 import { AppDialog } from "@/components/app-dialog";
@@ -19,6 +19,8 @@ type Props = {
   activityStartedAt?: string;
   activitySource?: LiveActivitySource;
   activityEvents?: CodexEvent[];
+  notificationClaimId?: string;
+  onNotificationOpened: () => void;
   onStartLive: (cwd: string, prompt: string) => void;
   onContinue: (prompt: string) => void;
   onReplay: () => void;
@@ -31,6 +33,8 @@ export function DashboardScreen({
   activityStartedAt,
   activitySource,
   activityEvents,
+  notificationClaimId,
+  onNotificationOpened,
   onStartLive,
   onContinue,
   onReplay,
@@ -42,6 +46,12 @@ export function DashboardScreen({
       : undefined,
     [openView, snapshot.claims],
   );
+
+  useEffect(() => {
+    if (!notificationClaimId) return;
+    setOpenView({ kind: "claim", claimId: notificationClaimId });
+    onNotificationOpened();
+  }, [notificationClaimId, onNotificationOpened]);
 
   function openClaim(claim: Claim) {
     setOpenView({ kind: "claim", claimId: claim.id });

@@ -1,6 +1,7 @@
 use std::{path::PathBuf, sync::Arc};
 
 use tauri::{AppHandle, Emitter, Manager, State};
+use tauri_plugin_autostart::ManagerExt;
 
 use crate::{
     domain::{
@@ -40,11 +41,44 @@ pub fn set_global_observation(
     state: State<'_, Arc<ApplicationState>>,
     enabled: bool,
 ) -> CommandResult<SystemStatus> {
+    if enabled && !state.launch_at_login_configured() && app.autolaunch().enable().is_ok() {
+        let _ = state.set_launch_at_login(true);
+    }
     let status = state
         .set_global_observation(enabled)
         .map_err(|error| error.to_string())?;
     let _ = app.emit("gbox://system-status", &status);
     Ok(status)
+}
+
+#[tauri::command]
+pub fn set_launch_at_login(
+    app: AppHandle,
+    state: State<'_, Arc<ApplicationState>>,
+    enabled: bool,
+) -> CommandResult<SystemStatus> {
+    if enabled {
+        app.autolaunch().enable()
+    } else {
+        app.autolaunch().disable()
+    }
+    .map_err(|error| error.to_string())?;
+    let status = state
+        .set_launch_at_login(enabled)
+        .map_err(|error| error.to_string())?;
+    let _ = app.emit("gbox://system-status", &status);
+    Ok(status)
+}
+
+#[tauri::command]
+pub fn set_notifications_available(
+    app: AppHandle,
+    state: State<'_, Arc<ApplicationState>>,
+    available: bool,
+) -> SystemStatus {
+    let status = state.set_notifications_available(available);
+    let _ = app.emit("gbox://system-status", &status);
+    status
 }
 
 #[tauri::command]

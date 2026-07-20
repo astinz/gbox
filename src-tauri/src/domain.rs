@@ -397,6 +397,8 @@ pub struct SystemStatus {
     pub global_observation: bool,
     pub observation_worker_healthy: bool,
     pub observation_queue_depth: usize,
+    pub notifications_available: bool,
+    pub launch_at_login: bool,
     pub receipt_chain_valid: bool,
     pub replay_mode: bool,
     pub diagnostic: Option<String>,

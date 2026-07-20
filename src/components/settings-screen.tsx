@@ -6,6 +6,7 @@ type Props = {
   snapshot: DashboardSnapshot;
   busy: boolean;
   onObservationChange: (enabled: boolean) => void;
+  onLaunchAtLoginChange: (enabled: boolean) => void;
   onSaveEvidence: (settings: EvidenceSettings) => void;
 };
 
@@ -13,6 +14,7 @@ export function SettingsScreen({
   snapshot,
   busy,
   onObservationChange,
+  onLaunchAtLoginChange,
   onSaveEvidence,
 }: Props) {
   return (
@@ -25,7 +27,11 @@ export function SettingsScreen({
         <p>Manage runtime trust, global observation, and the evidence sources available to every session.</p>
       </section>
       <section className="settings-layout">
-        <StatusBoard status={snapshot.status} onObservationChange={onObservationChange} />
+        <StatusBoard
+          status={snapshot.status}
+          onObservationChange={onObservationChange}
+          onLaunchAtLoginChange={onLaunchAtLoginChange}
+        />
         <EvidenceSettingsPanel
           settings={snapshot.evidenceSettings}
           sources={snapshot.evidenceSources}

@@ -180,9 +180,31 @@ describe("gBox interface", () => {
 
   it("exposes the global observation consent control", () => {
     const onChange = vi.fn();
-    render(<StatusBoard status={emptySnapshot.status} onObservationChange={onChange} />);
+    render(
+      <StatusBoard
+        status={emptySnapshot.status}
+        onObservationChange={onChange}
+        onLaunchAtLoginChange={vi.fn()}
+      />,
+    );
     fireEvent.click(screen.getByRole("switch", { name: "Global Codex observation" }));
     expect(onChange).toHaveBeenCalledWith(true, expect.anything());
+  });
+
+  it("keeps launch-at-login independent from observation", () => {
+    const observe = vi.fn();
+    const launch = vi.fn();
+    render(
+      <StatusBoard
+        status={emptySnapshot.status}
+        onObservationChange={observe}
+        onLaunchAtLoginChange={launch}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("switch", { name: "Launch gBox at login" }));
+    expect(launch).toHaveBeenCalledWith(true, expect.anything());
+    expect(observe).not.toHaveBeenCalled();
   });
 
   it("starts deterministic replay from the composer", () => {
@@ -245,6 +267,7 @@ describe("gBox interface", () => {
         snapshot={emptySnapshot}
         busy={false}
         onObservationChange={vi.fn()}
+        onLaunchAtLoginChange={vi.fn()}
         onSaveEvidence={vi.fn()}
       />,
     );
