@@ -3,6 +3,7 @@ import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 
 import type {
   DashboardSnapshot,
+  CodexEvent,
   EvidenceSettings,
   PendingAction,
   SystemStatus,
@@ -42,6 +43,7 @@ const refreshEvents = [
 export async function listenForGboxChanges(
   refresh: () => void,
   onApproval?: (action: PendingAction) => void,
+  onCodexEvent?: (event: CodexEvent) => void,
 ): Promise<UnlistenFn> {
   const unlisten = await Promise.all(
     refreshEvents.map((eventName) =>
@@ -49,7 +51,11 @@ export async function listenForGboxChanges(
         if (eventName === "gbox://approval-requested" && onApproval) {
           onApproval(event.payload as PendingAction);
         }
-        refresh();
+        if (eventName === "gbox://codex-event") {
+          onCodexEvent?.(event.payload as CodexEvent);
+        } else {
+          refresh();
+        }
       }),
     ),
   );

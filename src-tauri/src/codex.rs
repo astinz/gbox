@@ -114,7 +114,16 @@ impl CodexSupervisor {
         self.store
             .create_session(&session_id, "codex-app-server", Some(cwd))?;
         let turn = self.start_turn(&session_id, prompt, None).await?;
-        self.refresh_integration_status(Some(&session_id)).await;
+        let supervisor = self.clone();
+        let status_session = session_id.clone();
+        tokio::spawn(async move {
+            supervisor
+                .refresh_integration_status(Some(&status_session))
+                .await;
+            let _ = supervisor
+                .app
+                .emit("gbox://system-status", supervisor.status());
+        });
         Ok(LiveSessionResult {
             session_id,
             turn_id: turn,
@@ -380,7 +389,7 @@ impl CodexSupervisor {
                     }
                 }
                 if let Some(supervisor) = weak.upgrade() {
-                    supervisor.handle_notification(message);
+                    supervisor.handle_notification(message).await;
                 }
             }
             connected.store(false, Ordering::Relaxed);
@@ -409,73 +418,69 @@ impl CodexSupervisor {
         });
     }
 
-    fn handle_notification(self: Arc<Self>, message: Value) {
-        tokio::spawn(async move {
-            let method = message
-                .get("method")
-                .and_then(Value::as_str)
-                .unwrap_or("app-server/unknown");
-            let params = message.get("params").cloned().unwrap_or(Value::Null);
-            let session_id = notification_thread_id(&params).map(str::to_owned);
-            let internal = if let Some(session) = &session_id {
-                self.internal_threads.lock().await.contains(session)
-            } else {
-                false
-            };
-            let source = if internal { "codex-internal" } else { "codex" };
-            if method == "turn/started" {
-                if let (Some(session), Some(turn_id)) = (
-                    session_id.as_deref(),
-                    params.pointer("/turn/id").and_then(Value::as_str),
-                ) {
-                    self.active_turns
-                        .lock()
-                        .await
-                        .insert(session.to_owned(), turn_id.to_owned());
-                }
-            } else if method == "turn/completed" {
-                if let Some(session) = session_id.as_deref() {
-                    self.active_turns.lock().await.remove(session);
-                }
-            }
-            if let Ok(event) = self.store.insert_event(
+    async fn handle_notification(self: Arc<Self>, message: Value) {
+        let method = message
+            .get("method")
+            .and_then(Value::as_str)
+            .unwrap_or("app-server/unknown");
+        let params = message.get("params").cloned().unwrap_or(Value::Null);
+        let session_id = notification_thread_id(&params).map(str::to_owned);
+        let internal = if let Some(session) = &session_id {
+            self.internal_threads.lock().await.contains(session)
+        } else {
+            false
+        };
+        let source = if internal { "codex-internal" } else { "codex" };
+        if method == "turn/started" {
+            if let (Some(session), Some(turn_id)) = (
                 session_id.as_deref(),
-                method,
-                &event_summary(method, &params),
-                &params,
-                source,
+                params.pointer("/turn/id").and_then(Value::as_str),
             ) {
-                if !internal {
-                    let _ = self.app.emit("gbox://codex-event", event);
+                self.active_turns
+                    .lock()
+                    .await
+                    .insert(session.to_owned(), turn_id.to_owned());
+            }
+        } else if method == "turn/completed" {
+            if let Some(session) = session_id.as_deref() {
+                self.active_turns.lock().await.remove(session);
+            }
+        }
+        if let Ok(event) = self.store.insert_event(
+            session_id.as_deref(),
+            method,
+            &event_summary(method, &params),
+            &params,
+            source,
+        ) {
+            if !internal {
+                let _ = self.app.emit("gbox://codex-event", event);
+            }
+        }
+        if method == "item/completed" && !internal {
+            let item = params.get("item").unwrap_or(&Value::Null);
+            if is_final_agent_message(item) {
+                if let (Some(session), Some(text)) =
+                    (session_id, item.get("text").and_then(Value::as_str))
+                {
+                    let turn_id = params
+                        .get("turnId")
+                        .and_then(Value::as_str)
+                        .map(str::to_owned);
+                    let supervisor = self.clone();
+                    let text = text.to_owned();
+                    tokio::spawn(async move {
+                        if let Err(error) = supervisor
+                            .ingest_text(&session, turn_id.as_deref(), &text)
+                            .await
+                        {
+                            supervisor
+                                .record_diagnostic("claim/extraction-failed", &error.to_string());
+                        }
+                    });
                 }
             }
-            if method == "item/completed" && !internal {
-                let item = params.get("item").unwrap_or(&Value::Null);
-                if is_final_agent_message(item) {
-                    if let (Some(session), Some(text)) =
-                        (session_id, item.get("text").and_then(Value::as_str))
-                    {
-                        let turn_id = params
-                            .get("turnId")
-                            .and_then(Value::as_str)
-                            .map(str::to_owned);
-                        let supervisor = self.clone();
-                        let text = text.to_owned();
-                        tokio::spawn(async move {
-                            if let Err(error) = supervisor
-                                .ingest_text(&session, turn_id.as_deref(), &text)
-                                .await
-                            {
-                                supervisor.record_diagnostic(
-                                    "claim/extraction-failed",
-                                    &error.to_string(),
-                                );
-                            }
-                        });
-                    }
-                }
-            }
-        });
+        }
     }
 
     async fn start_turn(
@@ -846,24 +851,73 @@ fn event_summary(method: &str, params: &Value) -> String {
     match method {
         "thread/started" => "Codex thread started".to_owned(),
         "turn/started" => "Codex turn started".to_owned(),
-        "turn/completed" => "Codex turn completed".to_owned(),
-        "item/started" => format!(
-            "Started {}",
-            params
-                .pointer("/item/type")
-                .and_then(Value::as_str)
-                .unwrap_or("item")
-        ),
-        "item/completed" => format!(
-            "Completed {}",
-            params
-                .pointer("/item/type")
-                .and_then(Value::as_str)
-                .unwrap_or("item")
-        ),
-        "item/agentMessage/delta" => "Agent message streaming".to_owned(),
+        "turn/completed" => params
+            .pointer("/turn/status")
+            .and_then(Value::as_str)
+            .map_or_else(
+                || "Codex turn completed".to_owned(),
+                |status| format!("Codex turn completed with status {status}"),
+            ),
+        "item/started" => item_event_summary("Started", params),
+        "item/completed" => item_event_summary("Completed", params),
+        "item/reasoning/summaryTextDelta" => params
+            .get("delta")
+            .and_then(Value::as_str)
+            .map(|delta| format!("Reasoning summary: {}", summary_text(delta)))
+            .unwrap_or_else(|| "Reasoning summary streaming".to_owned()),
+        "item/reasoning/textDelta" => "Private reasoning update (not displayed)".to_owned(),
+        "item/mcpToolCall/progress" => params
+            .get("message")
+            .and_then(Value::as_str)
+            .map(summary_text)
+            .unwrap_or_else(|| "MCP tool call in progress".to_owned()),
+        "item/agentMessage/delta" => "Assistant response streaming".to_owned(),
         other => other.replace('/', " · "),
     }
+}
+
+fn item_event_summary(verb: &str, params: &Value) -> String {
+    let item = params.get("item").unwrap_or(&Value::Null);
+    match item.get("type").and_then(Value::as_str) {
+        Some("reasoning") => {
+            let summary = item
+                .get("summary")
+                .and_then(Value::as_array)
+                .into_iter()
+                .flatten()
+                .filter_map(Value::as_str)
+                .collect::<Vec<_>>()
+                .join(" ");
+            if summary.is_empty() {
+                format!("{verb} reasoning summary")
+            } else {
+                format!("Reasoning summary: {}", summary_text(&summary))
+            }
+        }
+        Some("mcpToolCall") => {
+            let server = item.get("server").and_then(Value::as_str);
+            let tool = item.get("tool").and_then(Value::as_str);
+            match (server, tool) {
+                (Some(server), Some(tool)) => format!("{verb} MCP tool {server}/{tool}"),
+                _ => format!("{verb} MCP tool call"),
+            }
+        }
+        Some("webSearch") => format!("{verb} web search"),
+        Some("commandExecution") => format!("{verb} read-only command"),
+        Some("agentMessage") => format!("{verb} assistant response"),
+        Some(kind) => format!("{verb} {kind}"),
+        None => format!("{verb} item"),
+    }
+}
+
+fn summary_text(text: &str) -> String {
+    const LIMIT: usize = 180;
+    let compact = text.split_whitespace().collect::<Vec<_>>().join(" ");
+    if compact.chars().count() <= LIMIT {
+        return compact;
+    }
+    let truncated = compact.chars().take(LIMIT - 1).collect::<String>();
+    format!("{}…", truncated.trim_end())
 }
 
 fn plugin_is_installed() -> bool {

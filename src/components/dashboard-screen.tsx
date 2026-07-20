@@ -7,7 +7,8 @@ import { ClaimLedger } from "@/components/claim-ledger";
 import { DashboardOverview, type DashboardDetail } from "@/components/dashboard-overview";
 import { EventTimeline } from "@/components/event-timeline";
 import { TaskComposer } from "@/components/task-composer";
-import type { Claim, DashboardSnapshot } from "@/types/gbox";
+import type { LiveActivitySource } from "@/lib/live-activity";
+import type { Claim, CodexEvent, DashboardSnapshot } from "@/types/gbox";
 
 type OpenView = { kind: DashboardDetail } | { kind: "claim"; claimId: string };
 
@@ -15,6 +16,9 @@ type Props = {
   snapshot: DashboardSnapshot;
   busy: boolean;
   sessionId?: string;
+  activityStartedAt?: string;
+  activitySource?: LiveActivitySource;
+  activityEvents?: CodexEvent[];
   onStartLive: (cwd: string, prompt: string) => void;
   onContinue: (prompt: string) => void;
   onReplay: () => void;
@@ -24,6 +28,9 @@ export function DashboardScreen({
   snapshot,
   busy,
   sessionId,
+  activityStartedAt,
+  activitySource,
+  activityEvents,
   onStartLive,
   onContinue,
   onReplay,
@@ -54,6 +61,9 @@ export function DashboardScreen({
         <TaskComposer
           busy={busy}
           sessionId={sessionId}
+          events={activityEvents ?? snapshot.events}
+          activityStartedAt={activityStartedAt}
+          activitySource={activitySource}
           onStartLive={onStartLive}
           onContinue={onContinue}
           onReplay={onReplay}

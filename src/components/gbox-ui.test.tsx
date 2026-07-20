@@ -199,6 +199,21 @@ describe("gBox interface", () => {
     expect(replay).toHaveBeenCalledOnce();
   });
 
+  it("explains what is happening while a live turn connects", () => {
+    render(
+      <TaskComposer
+        busy
+        activityStartedAt="2026-07-20T10:00:00.000Z"
+        onStartLive={vi.fn()}
+        onContinue={vi.fn()}
+        onReplay={vi.fn()}
+      />,
+    );
+    expect(screen.getByRole("region", { name: "Codex live activity" })).toHaveAttribute("aria-busy", "true");
+    expect(screen.getByText("Connecting to Codex")).toBeInTheDocument();
+    expect(screen.getByText(/Private chain-of-thought is never displayed/)).toBeInTheDocument();
+  });
+
   it("saves Codex inheritance and gBox-specific MCP settings", () => {
     const save = vi.fn();
     render(

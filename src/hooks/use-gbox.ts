@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { gboxApi, listenForGboxChanges } from "@/lib/gbox-api";
+import type { LiveActivitySource } from "@/lib/live-activity";
+import type { CodexEvent } from "@/types/gbox";
 import { emptySnapshot, type DashboardSnapshot } from "@/types/gbox";
 import type { EvidenceSettings } from "@/types/gbox";
 
@@ -9,6 +11,9 @@ export function useGbox() {
   const [sessionId, setSessionId] = useState<string>();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
+  const [activityStartedAt, setActivityStartedAt] = useState<string>();
+  const [activitySource, setActivitySource] = useState<LiveActivitySource>();
+  const [activityEvents, setActivityEvents] = useState<CodexEvent[]>([]);
 
   const refresh = useCallback(async () => {
     try {
@@ -18,14 +23,23 @@ export function useGbox() {
     }
   }, []);
 
+  const receiveCodexEvent = useCallback((event: CodexEvent) => {
+    setActivityEvents((current) => current.some((item) => item.id === event.id)
+      ? current
+      : [event, ...current].slice(0, 300));
+    setSnapshot((current) => current.events.some((item) => item.id === event.id)
+      ? current
+      : { ...current, events: [event, ...current.events].slice(0, 300) });
+  }, []);
+
   useEffect(() => {
     void refresh();
     let dispose: (() => void) | undefined;
-    void listenForGboxChanges(() => void refresh()).then((unlisten) => {
+    void listenForGboxChanges(() => void refresh(), undefined, receiveCodexEvent).then((unlisten) => {
       dispose = unlisten;
     });
     return () => dispose?.();
-  }, [refresh]);
+  }, [receiveCodexEvent, refresh]);
 
   const run = useCallback(async <T,>(operation: () => Promise<T>): Promise<T | undefined> => {
     setBusy(true);
@@ -48,14 +62,30 @@ export function useGbox() {
       sessionId,
       busy,
       error,
+      activityStartedAt,
+      activitySource,
+      activityEvents,
       clearError: () => setError(undefined),
-      startReplay: () => run(() => gboxApi.startReplay()),
+      startReplay: () => {
+        setActivityStartedAt(new Date().toISOString());
+        setActivitySource("replay");
+        setActivityEvents([]);
+        return run(() => gboxApi.startReplay());
+      },
       startLive: async (cwd: string, prompt: string) => {
+        setActivityStartedAt(new Date().toISOString());
+        setActivitySource("codex");
+        setActivityEvents([]);
         const result = await run(() => gboxApi.startLive(cwd, prompt));
         if (result && "sessionId" in result) setSessionId(result.sessionId);
       },
-      sendPrompt: (prompt: string) =>
-        sessionId ? run(() => gboxApi.sendPrompt(sessionId, prompt)) : Promise.resolve(),
+      sendPrompt: (prompt: string) => {
+        if (!sessionId) return Promise.resolve();
+        setActivityStartedAt(new Date().toISOString());
+        setActivitySource("codex");
+        setActivityEvents([]);
+        return run(() => gboxApi.sendPrompt(sessionId, prompt));
+      },
       setGlobalObservation: (enabled: boolean) =>
         run(() => gboxApi.setGlobalObservation(enabled)),
       updateEvidenceSettings: (settings: EvidenceSettings) =>
@@ -63,7 +93,7 @@ export function useGbox() {
       resolveAction: (actionId: string, decision: "approve" | "deny") =>
         run(() => gboxApi.resolveAction(actionId, decision)),
     }),
-    [snapshot, sessionId, busy, error, run],
+    [snapshot, sessionId, busy, error, activityStartedAt, activitySource, activityEvents, run],
   );
 }
 

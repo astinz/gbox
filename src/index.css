@@ -165,6 +165,13 @@
   .recent-claim > svg { @apply size-3.5 text-muted-foreground; }
   .settings-layout { @apply grid items-start gap-4 xl:grid-cols-[360px_minmax(0,1fr)]; }
   .composer-card { @apply border-t-4 border-t-foreground; }
+  .live-activity { @apply mt-1 bg-muted/25; }
+  .live-activity__current { @apply rounded-md border bg-card px-3 py-2.5; }
+  .live-activity__list { @apply grid gap-1; }
+  .live-activity__item { @apply grid grid-cols-[10px_minmax(0,1fr)] gap-2 rounded-md px-2 py-1.5; }
+  .live-activity__node { @apply mt-1 block size-1.5 rounded-full bg-muted-foreground/45 ring-2 ring-background; }
+  .live-activity__node--active { @apply bg-accent; }
+  .live-activity__node--failed { @apply bg-destructive; }
   .status-card { @apply border-t-4 border-t-accent; }
   .live-kicker { @apply inline-flex items-center gap-1 rounded-full bg-foreground px-2 py-1 font-mono text-[10px] uppercase tracking-wider text-background; }
   .live-kicker svg { @apply text-accent; }

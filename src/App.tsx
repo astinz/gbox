@@ -30,6 +30,9 @@ function App() {
           snapshot={gbox.snapshot}
           busy={gbox.busy}
           sessionId={gbox.sessionId}
+          activityStartedAt={gbox.activityStartedAt}
+          activitySource={gbox.activitySource}
+          activityEvents={gbox.activityEvents}
           onStartLive={(cwd, prompt) => void gbox.startLive(cwd, prompt)}
           onContinue={(prompt) => void gbox.sendPrompt(prompt)}
           onReplay={() => void gbox.startReplay()}

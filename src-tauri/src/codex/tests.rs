@@ -59,6 +59,49 @@ fn parses_jsonl_and_correlates_only_responses() {
 }
 
 #[test]
+fn summarizes_only_public_reasoning_for_event_history() {
+    let public = event_summary(
+        "item/reasoning/summaryTextDelta",
+        &json!({"delta": "Checking the configured company metric source."}),
+    );
+    let private = event_summary(
+        "item/reasoning/textDelta",
+        &json!({"delta": "hidden model reasoning"}),
+    );
+    assert_eq!(
+        public,
+        "Reasoning summary: Checking the configured company metric source."
+    );
+    assert_eq!(private, "Private reasoning update (not displayed)");
+    assert!(!private.contains("hidden model reasoning"));
+}
+
+#[test]
+fn event_history_names_observable_tool_activity() {
+    assert_eq!(
+        event_summary(
+            "item/started",
+            &json!({"item": {
+                "type": "mcpToolCall",
+                "server": "company_data",
+                "tool": "company_get_metric"
+            }}),
+        ),
+        "Started MCP tool company_data/company_get_metric"
+    );
+    assert_eq!(
+        event_summary(
+            "item/completed",
+            &json!({"item": {
+                "type": "reasoning",
+                "summary": ["The source record", "contradicts the claim."]
+            }}),
+        ),
+        "Reasoning summary: The source record contradicts the claim."
+    );
+}
+
+#[test]
 fn normalizes_notification_thread_id_shapes() {
     assert_eq!(
         notification_thread_id(&json!({"threadId": "item-thread"})),

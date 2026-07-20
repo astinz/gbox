@@ -7,10 +7,16 @@ import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
+import { LiveActivity } from "@/components/live-activity";
+import { buildLiveActivity, type LiveActivitySource } from "@/lib/live-activity";
+import type { CodexEvent } from "@/types/gbox";
 
 type Props = {
   busy: boolean;
   sessionId?: string;
+  events?: CodexEvent[];
+  activityStartedAt?: string;
+  activitySource?: LiveActivitySource;
   onStartLive: (cwd: string, prompt: string) => void;
   onContinue: (prompt: string) => void;
   onReplay: () => void;
@@ -18,7 +24,16 @@ type Props = {
 
 const samplePrompt = "Evaluate this intentionally false claim: ‘Acme had 42 production database users in 2026-Q2.’ Use the available company metric MCP to check it, clearly state the contradiction, and prepare a concise report for the gBox test webhook. Do not send it without human approval.";
 
-export function TaskComposer({ busy, sessionId, onStartLive, onContinue, onReplay }: Props) {
+export function TaskComposer({
+  busy,
+  sessionId,
+  events = [],
+  activityStartedAt,
+  activitySource,
+  onStartLive,
+  onContinue,
+  onReplay,
+}: Props) {
   const [cwd, setCwd] = useState("");
   const [prompt, setPrompt] = useState(samplePrompt);
 
@@ -27,6 +42,13 @@ export function TaskComposer({ busy, sessionId, onStartLive, onContinue, onRepla
     if (sessionId) onContinue(prompt);
     else onStartLive(cwd || ".", prompt);
   }
+
+  const activity = buildLiveActivity(events, {
+    busy,
+    sessionId,
+    startedAt: activityStartedAt,
+    source: activitySource,
+  });
 
   return (
     <Card className="composer-card">
@@ -62,6 +84,7 @@ export function TaskComposer({ busy, sessionId, onStartLive, onContinue, onRepla
               <PlayIcon data-icon="inline-start" /> Run deterministic replay
             </Button>
           </div>
+          <LiveActivity activity={activity} />
         </FieldGroup>
       </CardContent>
     </Card>
