@@ -5,7 +5,7 @@ use tauri::{AppHandle, Emitter, Manager, State};
 use crate::{
     domain::{
         DashboardSnapshot, LiveSessionResult, ResolveActionInput, ResolveActionResult,
-        SendLivePromptInput, StartLiveSessionInput, SystemStatus,
+        SendLivePromptInput, StartLiveSessionInput, SystemStatus, UpdateEvidenceSettingsInput,
     },
     replay,
     state::ApplicationState,
@@ -44,6 +44,26 @@ pub fn set_global_observation(
         .map_err(|error| error.to_string())?;
     let _ = app.emit("gbox://system-status", &status);
     Ok(status)
+}
+
+#[tauri::command]
+pub async fn update_evidence_settings(
+    app: AppHandle,
+    state: State<'_, Arc<ApplicationState>>,
+    input: UpdateEvidenceSettingsInput,
+) -> CommandResult<DashboardSnapshot> {
+    state
+        .codex
+        .update_evidence_settings(input.settings)
+        .map_err(|error| error.to_string())?;
+    state
+        .codex
+        .refresh_evidence_sources()
+        .await
+        .map_err(|error| error.to_string())?;
+    let snapshot = state.snapshot().map_err(|error| error.to_string())?;
+    let _ = app.emit("gbox://system-status", &snapshot.status);
+    Ok(snapshot)
 }
 
 #[tauri::command]

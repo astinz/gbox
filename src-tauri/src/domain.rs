@@ -140,6 +140,16 @@ pub struct Evidence {
     pub created_at: String,
 }
 
+#[derive(Debug, Clone)]
+pub struct EvidenceInput {
+    pub source_kind: String,
+    pub source_name: String,
+    pub source_reference: String,
+    pub content: Option<Value>,
+    pub result_hash: String,
+    pub explanation: String,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PendingAction {
@@ -222,6 +232,7 @@ pub struct DashboardSnapshot {
     pub receipts: Vec<Receipt>,
     pub events: Vec<CodexEvent>,
     pub evidence_settings: EvidenceSettings,
+    pub evidence_sources: Vec<EvidenceSource>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]

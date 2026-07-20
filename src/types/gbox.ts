@@ -108,6 +108,7 @@ export type DashboardSnapshot = {
   receipts: Receipt[];
   events: CodexEvent[];
   evidenceSettings: EvidenceSettings;
+  evidenceSources: EvidenceSource[];
 };
 
 export type WebSearchMode = "disabled" | "cached" | "live";
@@ -136,6 +137,17 @@ export type EvidenceSettings = {
   mcpServers: ConfiguredMcpServer[];
 };
 
+export type EvidenceSource = {
+  sourceKind: string;
+  server?: string;
+  tool?: string;
+  title: string;
+  description: string;
+  inputSchema: unknown;
+  readOnly: boolean;
+  pluginBacked: boolean;
+};
+
 export const emptySnapshot: DashboardSnapshot = {
   status: {
     codexFound: false,
@@ -160,4 +172,5 @@ export const emptySnapshot: DashboardSnapshot = {
     webSearchMode: "cached",
     mcpServers: [],
   },
+  evidenceSources: [],
 };

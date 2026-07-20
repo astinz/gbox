@@ -84,9 +84,13 @@ export function ClaimLedger({ claims, evidence }: Props) {
 function summarizeEvidence(evidence: Evidence): string {
   const content = evidence.content;
   if (content && typeof content === "object") {
-    const record = "record" in content && content.record && typeof content.record === "object"
-      ? content.record as Record<string, unknown>
-      : content as Record<string, unknown>;
+    const envelope = content as Record<string, unknown>;
+    const toolResult = envelope.toolResult && typeof envelope.toolResult === "object"
+      ? envelope.toolResult as Record<string, unknown>
+      : envelope;
+    const record = "record" in toolResult && toolResult.record && typeof toolResult.record === "object"
+      ? toolResult.record as Record<string, unknown>
+      : toolResult;
     if (typeof record.value === "string") {
       return `${record.value}${typeof record.unit === "string" ? ` ${record.unit}` : ""}`;
     }

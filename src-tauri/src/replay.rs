@@ -6,7 +6,7 @@ use serde_json::json;
 use tauri::{AppHandle, Emitter};
 
 use crate::{
-    domain::{ClaimCandidate, DashboardSnapshot},
+    domain::{ClaimCandidate, DashboardSnapshot, EvidenceInput},
     state::ApplicationState,
     verifier::{find_seed_record, verify_candidate},
 };
@@ -53,22 +53,23 @@ pub async fn start_replay(
             session_id,
             Some(turn_id),
             &candidate,
-            outcome.state,
+            outcome.state.clone(),
             outcome.confidence,
         )?;
         state.store.insert_evidence(
             &claim.id,
-            "plugin_mcp",
-            "company_get_metric",
-            "replay:mcpServer/toolCall:company_get_metric",
-            outcome
-                .record
-                .as_ref()
-                .map(serde_json::to_value)
-                .transpose()?
-                .as_ref(),
-            &outcome.result_hash,
-            &outcome.explanation,
+            &EvidenceInput {
+                source_kind: "plugin_mcp".to_owned(),
+                source_name: "company_get_metric".to_owned(),
+                source_reference: "replay:mcpServer/toolCall:company_get_metric".to_owned(),
+                content: outcome
+                    .record
+                    .as_ref()
+                    .map(serde_json::to_value)
+                    .transpose()?,
+                result_hash: outcome.result_hash,
+                explanation: outcome.explanation,
+            },
         )?;
         let _ = app.emit("gbox://claim-updated", &claim);
         claim_ids.push(claim.id);

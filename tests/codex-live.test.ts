@@ -37,7 +37,7 @@ liveIt(
       input: [
         {
           type: "text",
-          text: "Call company_get_metric for Acme production_database_users in 2026-Q2, then report the returned value in one sentence.",
+          text: "Evaluate this intentionally false claim: ‘Acme had 42 production database users in 2026-Q2.’ Call company_get_metric to verify it, then state both the claimed and authoritative values in one sentence.",
         },
       ],
       approvalPolicy: "never",
@@ -54,6 +54,12 @@ liveIt(
     expect(client.notifications.some((message) => message.method === "turn/started")).toBe(true);
     expect(client.notifications.some(isAgentMessage)).toBe(true);
     expect(client.notifications.some(isMcpCall)).toBe(true);
+    const assistantText = client.notifications
+      .filter(isAgentMessage)
+      .map((message) => nestedString(message.params ?? {}, "item", "text"))
+      .join(" ");
+    expect(assistantText).toContain("42");
+    expect(assistantText).toContain("17");
   },
   130_000,
 );

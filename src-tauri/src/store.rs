@@ -9,8 +9,8 @@ use sha2::{Digest, Sha256};
 use uuid::Uuid;
 
 use crate::domain::{
-    ActionState, Claim, ClaimCandidate, ClaimState, CodexEvent, Decision, Evidence, PendingAction,
-    Receipt,
+    ActionState, Claim, ClaimCandidate, ClaimState, CodexEvent, Decision, Evidence, EvidenceInput,
+    PendingAction, Receipt,
 };
 
 mod schema;
@@ -179,25 +179,16 @@ impl Store {
         Ok(claim)
     }
 
-    pub fn insert_evidence(
-        &self,
-        claim_id: &str,
-        source_kind: &str,
-        source_name: &str,
-        source_reference: &str,
-        content: Option<&Value>,
-        result_hash: &str,
-        explanation: &str,
-    ) -> Result<Evidence> {
+    pub fn insert_evidence(&self, claim_id: &str, input: &EvidenceInput) -> Result<Evidence> {
         let evidence = Evidence {
             id: Uuid::new_v4().to_string(),
             claim_id: claim_id.to_owned(),
-            source_kind: source_kind.to_owned(),
-            source_name: source_name.to_owned(),
-            source_reference: source_reference.to_owned(),
-            content: content.cloned(),
-            result_hash: result_hash.to_owned(),
-            explanation: explanation.to_owned(),
+            source_kind: input.source_kind.clone(),
+            source_name: input.source_name.clone(),
+            source_reference: input.source_reference.clone(),
+            content: input.content.clone(),
+            result_hash: input.result_hash.clone(),
+            explanation: input.explanation.clone(),
             created_at: now(),
         };
         let connection = self.lock()?;

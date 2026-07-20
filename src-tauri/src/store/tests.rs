@@ -31,12 +31,14 @@ fn approved_action(store: &Store) -> (PendingAction, String) {
     store
         .insert_evidence(
             &claim.id,
-            "mcp",
-            "test_metric",
-            "test:mcp",
-            None,
-            "evidence-hash",
-            "verified in test",
+            &EvidenceInput {
+                source_kind: "mcp".to_owned(),
+                source_name: "test_metric".to_owned(),
+                source_reference: "test:mcp".to_owned(),
+                content: None,
+                result_hash: "evidence-hash".to_owned(),
+                explanation: "verified in test".to_owned(),
+            },
         )
         .expect("evidence");
     let action = store

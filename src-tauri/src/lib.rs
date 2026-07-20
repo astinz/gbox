@@ -2,6 +2,7 @@ mod codex;
 mod commands;
 mod control;
 mod domain;
+mod evidence;
 mod gate;
 mod replay;
 mod state;
@@ -42,6 +43,7 @@ pub fn run() {
             commands::get_dashboard_snapshot,
             commands::verify_receipt_chain,
             commands::set_global_observation,
+            commands::update_evidence_settings,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application");

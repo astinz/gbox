@@ -5,6 +5,7 @@ import { ActionHistory } from "@/components/action-history";
 import { ApprovalPanel } from "@/components/approval-panel";
 import { ClaimLedger } from "@/components/claim-ledger";
 import { EventTimeline } from "@/components/event-timeline";
+import { EvidenceSettingsPanel } from "@/components/evidence-settings";
 import { StatusBoard } from "@/components/status-board";
 import { TaskComposer } from "@/components/task-composer";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -56,6 +57,13 @@ function Dashboard() {
           onObservationChange={(enabled) => void gbox.setGlobalObservation(enabled)}
         />
       </section>
+
+      <EvidenceSettingsPanel
+        settings={gbox.snapshot.evidenceSettings}
+        sources={gbox.snapshot.evidenceSources}
+        busy={gbox.busy}
+        onSave={(settings) => void gbox.updateEvidenceSettings(settings)}
+      />
 
       <Tabs defaultValue="claims" className="mt-4">
         <TabsList variant="line" className="mb-3">

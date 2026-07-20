@@ -16,7 +16,7 @@ type Props = {
   onReplay: () => void;
 };
 
-const samplePrompt = "Check Acme's production database users for 2026-Q2 and prepare a concise report for the gBox test webhook.";
+const samplePrompt = "Evaluate this intentionally false claim: ‘Acme had 42 production database users in 2026-Q2.’ Use the available company metric MCP to check it, clearly state the contradiction, and prepare a concise report for the gBox test webhook. Do not send it without human approval.";
 
 export function TaskComposer({ busy, sessionId, onStartLive, onContinue, onReplay }: Props) {
   const [cwd, setCwd] = useState("");

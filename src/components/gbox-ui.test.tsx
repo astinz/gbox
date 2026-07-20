@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { ApprovalPanel } from "@/components/approval-panel";
 import { ClaimLedger } from "@/components/claim-ledger";
+import { EvidenceSettingsPanel } from "@/components/evidence-settings";
 import { StatusBoard } from "@/components/status-board";
 import { TaskComposer } from "@/components/task-composer";
 import { emptySnapshot, type Claim } from "@/types/gbox";
@@ -112,6 +113,31 @@ describe("gBox interface", () => {
     );
     fireEvent.click(screen.getByRole("button", { name: /run deterministic replay/i }));
     expect(replay).toHaveBeenCalledOnce();
+  });
+
+  it("saves Codex inheritance and gBox-specific MCP settings", () => {
+    const save = vi.fn();
+    render(
+      <EvidenceSettingsPanel
+        busy={false}
+        settings={emptySnapshot.evidenceSettings}
+        sources={[]}
+        onSave={save}
+      />,
+    );
+    fireEvent.click(screen.getByRole("switch", { name: "Use existing Codex MCP configuration" }));
+    fireEvent.change(screen.getByLabelText("gBox-specific MCP servers (JSON)"), {
+      target: {
+        value: JSON.stringify([
+          { name: "facts", enabled: true, transport: "stdio", command: "facts-mcp", args: [], envVars: [] },
+        ]),
+      },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /save and discover/i }));
+    expect(save).toHaveBeenCalledWith(expect.objectContaining({
+      useCodexMcpConfig: false,
+      mcpServers: [expect.objectContaining({ name: "facts" })],
+    }));
   });
 
   it("shows risk and resolves the real pending approval", () => {

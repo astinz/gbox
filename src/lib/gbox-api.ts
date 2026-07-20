@@ -3,6 +3,7 @@ import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 
 import type {
   DashboardSnapshot,
+  EvidenceSettings,
   PendingAction,
   SystemStatus,
 } from "@/types/gbox";
@@ -26,6 +27,8 @@ export const gboxApi = {
     invoke("resolve_action", { input: { actionId, decision } }),
   setGlobalObservation: (enabled: boolean) =>
     invoke<SystemStatus>("set_global_observation", { enabled }),
+  updateEvidenceSettings: (settings: EvidenceSettings) =>
+    invoke<DashboardSnapshot>("update_evidence_settings", { input: { settings } }),
 };
 
 const refreshEvents = [

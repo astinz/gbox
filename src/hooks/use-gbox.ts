@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { gboxApi, listenForGboxChanges } from "@/lib/gbox-api";
 import { emptySnapshot, type DashboardSnapshot } from "@/types/gbox";
+import type { EvidenceSettings } from "@/types/gbox";
 
 export function useGbox() {
   const [snapshot, setSnapshot] = useState<DashboardSnapshot>(emptySnapshot);
@@ -57,6 +58,8 @@ export function useGbox() {
         sessionId ? run(() => gboxApi.sendPrompt(sessionId, prompt)) : Promise.resolve(),
       setGlobalObservation: (enabled: boolean) =>
         run(() => gboxApi.setGlobalObservation(enabled)),
+      updateEvidenceSettings: (settings: EvidenceSettings) =>
+        run(() => gboxApi.updateEvidenceSettings(settings)),
       resolveAction: (actionId: string, decision: "approve" | "deny") =>
         run(() => gboxApi.resolveAction(actionId, decision)),
     }),
