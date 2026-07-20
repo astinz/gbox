@@ -10,6 +10,7 @@
     "notification:allow-notify",
     "notification:allow-register-action-types",
     "notification:allow-register-listener",
+    "clipboard-manager:allow-write-text",
     "autostart:allow-enable",
     "autostart:allow-disable",
     "autostart:allow-is-enabled"

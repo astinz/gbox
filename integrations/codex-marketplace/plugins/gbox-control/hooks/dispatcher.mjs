@@ -3,7 +3,7 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { readFile } from "node:fs/promises";
 
-import { shouldForwardStop } from "./policy.mjs";
+import { shouldForwardStop, stableStopPayload } from "./policy.mjs";
 
 const hookKind = process.argv[2];
 
@@ -17,7 +17,7 @@ try {
     const response = await fetch(`${discovery.endpoint}${route}`, {
       method: "POST",
       headers: requestHeaders(discovery),
-      body: JSON.stringify(input),
+      body: JSON.stringify(hookKind === "stop" ? stableStopPayload(input) : input),
       signal: AbortSignal.timeout(hookKind === "pre-tool-use" ? 305_000 : 15_000),
     });
     const body = await response.json();

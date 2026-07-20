@@ -24,6 +24,7 @@ type Props = {
   onStartLive: (cwd: string, prompt: string) => void;
   onContinue: (prompt: string) => void;
   onReplay: () => void;
+  onRetryObservation: (observationId: string) => void;
 };
 
 export function DashboardScreen({
@@ -38,6 +39,7 @@ export function DashboardScreen({
   onStartLive,
   onContinue,
   onReplay,
+  onRetryObservation,
 }: Props) {
   const [openView, setOpenView] = useState<OpenView>();
   const selectedClaim = useMemo(
@@ -62,28 +64,17 @@ export function DashboardScreen({
       <section className="page-intro">
         <div>
           <p className="eyebrow">Local evidence control</p>
-          <h1>Govern the claims that drive action.</h1>
+          <h1>Research, with a second set of eyes.</h1>
         </div>
-        <p>Run a task, inspect the posture, and open the audit trail only when you need it.</p>
+        <p>gBox checks material claims after each completed Codex turn and brings exceptions forward.</p>
       </section>
 
-      <div className="dashboard-grid">
-        <TaskComposer
-          busy={busy}
-          sessionId={sessionId}
-          events={activityEvents ?? snapshot.events}
-          activityStartedAt={activityStartedAt}
-          activitySource={activitySource}
-          onStartLive={onStartLive}
-          onContinue={onContinue}
-          onReplay={onReplay}
-        />
-        <DashboardOverview
-          snapshot={snapshot}
-          onOpenDetail={(kind) => setOpenView({ kind })}
-          onOpenClaim={openClaim}
-        />
-      </div>
+      <DashboardOverview
+        snapshot={snapshot}
+        onOpenDetail={(kind) => setOpenView({ kind })}
+        onOpenClaim={openClaim}
+        onRetryObservation={onRetryObservation}
+      />
 
       <AppDialog
         open={Boolean(openView)}
@@ -102,6 +93,18 @@ export function DashboardScreen({
         {openView?.kind === "actions" ? (
           <ActionHistory actions={snapshot.actions} receipts={snapshot.receipts} />
         ) : null}
+        {openView?.kind === "tools" ? (
+          <TaskComposer
+            busy={busy}
+            sessionId={sessionId}
+            events={activityEvents ?? snapshot.events}
+            activityStartedAt={activityStartedAt}
+            activitySource={activitySource}
+            onStartLive={onStartLive}
+            onContinue={onContinue}
+            onReplay={onReplay}
+          />
+        ) : null}
         {openView?.kind === "claim" && selectedClaim ? (
           <ClaimDetail
             claim={selectedClaim}
@@ -118,6 +121,7 @@ function dialogTitle(view?: OpenView): string {
   if (view?.kind === "claims") return "Claim ledger";
   if (view?.kind === "events") return "Codex App Server events";
   if (view?.kind === "actions") return "Actions and receipt chain";
+  if (view?.kind === "tools") return "Hosted and replay test tools";
   if (view?.kind === "claim") return "Verification dossier";
   return "gBox details";
 }
@@ -126,6 +130,7 @@ function dialogDescription(view?: OpenView, claim?: Claim): string {
   if (view?.kind === "claims") return "Filter every extracted claim and open its verification record.";
   if (view?.kind === "events") return "Raw hosted and replay event telemetry, ordered by arrival.";
   if (view?.kind === "actions") return "Protected side effects and their tamper-evident decision receipts.";
+  if (view?.kind === "tools") return "Run the deterministic judge path or a gBox-hosted Codex session.";
   if (view?.kind === "claim") return claim?.statement ?? "Full extraction and verification trace.";
   return "Detailed audit information.";
 }

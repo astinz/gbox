@@ -7,8 +7,12 @@ import {
   RouteIcon,
   TriangleAlertIcon,
 } from "lucide-react";
+import { useState } from "react";
+import { writeText } from "@tauri-apps/plugin-clipboard-manager";
 
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { buildCorrectionPrompt } from "@/lib/correction-prompt";
 import type { Claim, Evidence, VerificationFailure } from "@/types/gbox";
 
 type Props = {
@@ -25,6 +29,7 @@ const methodLabels = {
 } as const;
 
 export function ClaimDetail({ claim, evidence, failures }: Props) {
+  const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
   const latest = evidence[0];
   const plan = latest?.selectedPlan;
   const eligibleSources = latest?.eligibleSources ?? [];
@@ -35,11 +40,30 @@ export function ClaimDetail({ claim, evidence, failures }: Props) {
     <article className="claim-detail" aria-label={`Verification detail for ${claim.statement}`}>
       <div className="claim-detail__meta">
         <code>{claim.id.slice(0, 12)}</code>
-        {latest && (
-          <Badge variant="outline" className="font-mono text-[10px]">
-            {methodLabels[latest.comparisonMethod]}
-          </Badge>
-        )}
+        <div className="flex items-center gap-2">
+          {claim.state === "Contradicted" && latest ? (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                void writeText(buildCorrectionPrompt(claim, evidence))
+                  .then(() => setCopyState("copied"))
+                  .catch(() => setCopyState("failed"));
+              }}
+            >
+              {copyState === "copied"
+                ? "Copied for Codex"
+                : copyState === "failed"
+                  ? "Copy failed"
+                  : "Copy correction for Codex"}
+            </Button>
+          ) : null}
+          {latest && (
+            <Badge variant="outline" className="font-mono text-[10px]">
+              {methodLabels[latest.comparisonMethod]}
+            </Badge>
+          )}
+        </div>
       </div>
       <div className="claim-dossier__body">
           <section className="dossier-section">

@@ -19,6 +19,7 @@ use tauri_plugin_autostart::{MacosLauncher, ManagerExt};
 pub fn run() {
     let application = tauri::Builder::default()
         .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(
             tauri_plugin_autostart::Builder::new()
                 .args(["--background"])

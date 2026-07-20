@@ -6,7 +6,10 @@ import { resolve } from "node:path";
 
 import { afterEach, describe, expect, it } from "vitest";
 
-import { shouldForwardStop } from "../integrations/codex-marketplace/plugins/gbox-control/hooks/policy.mjs";
+import {
+  shouldForwardStop,
+  stableStopPayload,
+} from "../integrations/codex-marketplace/plugins/gbox-control/hooks/policy.mjs";
 
 const dispatcher = resolve(
   "integrations/codex-marketplace/plugins/gbox-control/hooks/dispatcher.mjs",
@@ -35,6 +38,24 @@ describe("gBox hook dispatcher", () => {
 
     expect(result.exitCode).toBe(0);
     expect(output.hookSpecificOutput.permissionDecision).toBe("deny");
+  });
+
+  it("forwards stable completed-turn fields without depending on transcript files", () => {
+    const payload = stableStopPayload({
+      session_id: "ordinary-codex-session",
+      turn_id: "turn-8",
+      cwd: "/tmp/research",
+      transcript_path: "/unstable/transcript.jsonl",
+      last_assistant_message: "Acme had 42 production database users.",
+    });
+
+    expect(payload).toEqual({
+      session_id: "ordinary-codex-session",
+      turn_id: "turn-8",
+      cwd: "/tmp/research",
+      last_assistant_message: "Acme had 42 production database users.",
+    });
+    expect(payload).not.toHaveProperty("transcript_path");
   });
 });
 

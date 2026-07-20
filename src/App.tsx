@@ -42,6 +42,7 @@ function App() {
           onStartLive={(cwd, prompt) => void gbox.startLive(cwd, prompt)}
           onContinue={(prompt) => void gbox.sendPrompt(prompt)}
           onReplay={() => void gbox.startReplay()}
+          onRetryObservation={(observationId) => void gbox.retryObservation(observationId)}
         />
       ) : (
         <SettingsScreen

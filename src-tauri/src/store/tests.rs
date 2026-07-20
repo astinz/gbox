@@ -405,3 +405,30 @@ fn observation_without_claims_needs_no_notification() {
     assert_eq!(completed.notification_state, NotificationState::NotRequired);
     assert!(completed.primary_claim_id.is_none());
 }
+
+#[test]
+fn processing_observation_recovers_after_database_restart() {
+    let path = std::env::temp_dir().join(format!("gbox-observation-{}.sqlite3", Uuid::new_v4()));
+    {
+        let store = Store::open(&path).expect("first open");
+        store
+            .enqueue_observation("session", Some("turn"), None, "hook", "A claim")
+            .expect("enqueue");
+        let processing = store
+            .claim_next_observation()
+            .expect("claim")
+            .expect("work");
+        assert_eq!(processing.observation.state, ObservationState::Processing);
+    }
+    {
+        let store = Store::open(&path).expect("reopen");
+        assert_eq!(store.recover_observations().expect("recover"), 1);
+        let recovered = store
+            .claim_next_observation()
+            .expect("claim recovered")
+            .expect("recovered work");
+        assert_eq!(recovered.observation.state, ObservationState::Processing);
+        assert_eq!(recovered.observation.attempts, 2);
+    }
+    let _ = std::fs::remove_file(path);
+}

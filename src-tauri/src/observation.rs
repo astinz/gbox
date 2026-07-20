@@ -104,7 +104,6 @@ impl ObservationService {
                 &observation.session_id,
                 observation.turn_id.as_deref(),
                 &work.message_body,
-                terminal_attempt,
             )
             .await;
         match result {

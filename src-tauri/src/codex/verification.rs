@@ -17,10 +17,11 @@ use crate::{
 
 impl CodexSupervisor {
     pub(super) async fn verify_claim(&self, candidate: &ClaimCandidate) -> Result<EvidenceOutcome> {
-        let verifier_thread = self.create_verifier_thread().await?;
-        self.refresh_integration_status(Some(&verifier_thread))
-            .await;
-        let sources = self.evidence_sources();
+        let mut sources = self.evidence_sources();
+        if sources.is_empty() {
+            self.refresh_integration_status(None).await;
+            sources = self.evidence_sources();
+        }
         if sources.is_empty() {
             let mut outcome = EvidenceOutcome::unverifiable(
                 "verification-router",
@@ -61,6 +62,11 @@ impl CodexSupervisor {
         }
         let result = match plan.source_type.as_str() {
             "mcp" => {
+                let server = plan
+                    .server
+                    .as_deref()
+                    .context("MCP plan is missing a server")?;
+                let verifier_thread = self.create_selected_mcp_thread(server).await?;
                 self.verify_with_mcp(&verifier_thread, candidate, &plan, &sources)
                     .await
             }
@@ -95,6 +101,43 @@ impl CodexSupervisor {
         outcome.eligible_sources = sources;
         outcome.selected_plan = Some(plan);
         Ok(outcome)
+    }
+
+    async fn create_selected_mcp_thread(&self, server: &str) -> Result<String> {
+        let mut settings = self.evidence_settings();
+        settings.use_codex_mcp_config = false;
+        settings
+            .mcp_servers
+            .retain(|configured| configured.enabled && configured.name == server);
+        let custom_selected = !settings.mcp_servers.is_empty();
+        let mut inherited = self.inherited_server_disable_configs();
+        let inherited_selected = inherited.get_mut(server).is_some_and(|config| {
+            config["enabled"] = Value::Bool(true);
+            true
+        });
+        if !custom_selected && !inherited_selected {
+            return Err(anyhow!("selected MCP server is no longer configured"));
+        }
+        let config = thread_config(&settings, &inherited, false);
+        let thread = self
+            .request(
+                "thread/start",
+                json!({
+                    "ephemeral": true,
+                    "sandbox": "read-only",
+                    "approvalPolicy": "never",
+                    "config": config,
+                    "developerInstructions": "This internal thread is reserved for one gBox read-only evidence call. Never use another tool.",
+                }),
+            )
+            .await?;
+        let thread_id = thread
+            .pointer("/thread/id")
+            .and_then(Value::as_str)
+            .context("verifier thread has no id")?
+            .to_owned();
+        self.internal_threads.lock().await.insert(thread_id.clone());
+        Ok(thread_id)
     }
 
     async fn plan_verification(

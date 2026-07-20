@@ -5,6 +5,7 @@ import { AppHeader } from "@/components/app-header";
 import { ApprovalDialog } from "@/components/approval-dialog";
 import { ClaimDetail } from "@/components/claim-detail";
 import { ClaimLedger } from "@/components/claim-ledger";
+import { DashboardOverview } from "@/components/dashboard-overview";
 import { EvidenceSettingsPanel } from "@/components/evidence-settings";
 import { SettingsScreen } from "@/components/settings-screen";
 import { StatusBoard } from "@/components/status-board";
@@ -161,6 +162,46 @@ describe("gBox interface", () => {
     expect(screen.getByText("Raw stored evidence")).toBeInTheDocument();
     expect(screen.getByText("2 read-only sources were eligible.")).toBeInTheDocument();
     expect(screen.getByText("Inspect 1 other eligible source")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Copy correction for Codex" })).toBeInTheDocument();
+  });
+
+  it("makes ordinary Codex observation the primary dashboard signal", () => {
+    const selected = claim("claim-observed", "Contradicted");
+    const snapshot = {
+      ...emptySnapshot,
+      status: {
+        ...emptySnapshot.status,
+        globalObservation: true,
+        observationWorkerHealthy: true,
+      },
+      claims: [selected],
+      recentObservations: [{
+        id: "observation-1",
+        sessionId: "codex-session",
+        source: "codex-stop-hook",
+        messageHash: "hash",
+        messageExcerpt: selected.statement,
+        state: "Completed" as const,
+        attempts: 1,
+        primaryClaimId: selected.id,
+        verdictCounts: { verified: 0, contradicted: 1, unverifiable: 0 },
+        notificationState: "Failed" as const,
+        createdAt: new Date().toISOString(),
+      }],
+    };
+    const openClaim = vi.fn();
+    render(
+      <DashboardOverview
+        snapshot={snapshot}
+        onOpenDetail={vi.fn()}
+        onOpenClaim={openClaim}
+        onRetryObservation={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("heading", { name: "Needs attention" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Contradicted test claim/ }));
+    expect(openClaim).toHaveBeenCalledWith(selected);
   });
 
   it("reveals claim details on demand from the ledger", () => {

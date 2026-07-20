@@ -26,9 +26,9 @@ impl CodexSupervisor {
         session_id: &str,
         turn_id: Option<&str>,
         text: &str,
-        allow_extraction_fallback: bool,
     ) -> Result<Vec<ClaimWrite>> {
-        self.ingest_with_status(session_id, turn_id, text, allow_extraction_fallback)
+        self.ensure_started().await?;
+        self.ingest_with_status(session_id, turn_id, text, false)
             .await
     }
 
