@@ -126,7 +126,7 @@ pub fn thread_config(
     }
     let mut config = json!({
         "web_search": if disable_all_mcp { "disabled" } else { settings.web_search_mode.as_config() },
-        "features": {"shell_tool": false},
+        "features": {"hooks": false, "shell_tool": false},
         "mcp_servers": servers,
     });
     if disable_inherited {
@@ -524,6 +524,7 @@ mod tests {
         );
         assert_eq!(config["apps"]["_default"]["enabled"], Value::Bool(false));
         assert_eq!(config["web_search"], Value::String("disabled".to_owned()));
+        assert_eq!(config["features"]["hooks"], Value::Bool(false));
         assert_eq!(
             config["mcp_servers"]["company_data"]["command"],
             Value::String("company-mcp".to_owned())

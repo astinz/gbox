@@ -82,6 +82,10 @@ impl CodexSupervisor {
         })
     }
 
+    pub async fn is_internal_thread(&self, session_id: &str) -> bool {
+        self.internal_threads.lock().await.contains(session_id)
+    }
+
     pub async fn start_live_session(
         self: &Arc<Self>,
         cwd: &str,
@@ -426,7 +430,7 @@ impl CodexSupervisor {
         let params = message.get("params").cloned().unwrap_or(Value::Null);
         let session_id = notification_thread_id(&params).map(str::to_owned);
         let internal = if let Some(session) = &session_id {
-            self.internal_threads.lock().await.contains(session)
+            self.is_internal_thread(session).await
         } else {
             false
         };

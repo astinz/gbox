@@ -222,6 +222,14 @@ async fn stop_hook(
     let session_id = payload
         .session_id
         .unwrap_or_else(|| format!("global-{}", Uuid::new_v4()));
+    if context.state.codex.is_internal_thread(&session_id).await {
+        return Json(json!({
+            "ok": true,
+            "observed": false,
+            "reason": "gbox-internal-session"
+        }))
+        .into_response();
+    }
     let _ = context
         .state
         .store
@@ -323,5 +331,18 @@ mod tests {
             version: "0.1.0".to_owned(),
         };
         assert!(document.endpoint.starts_with("http://127.0.0.1:"));
+    }
+
+    #[test]
+    fn stop_payload_retains_session_identity_for_recursion_checks() {
+        let payload: HookPayload = serde_json::from_value(json!({
+            "session_id": "internal-thread-7",
+            "turn_id": "turn-2",
+            "last_assistant_message": "A material claim"
+        }))
+        .expect("valid hook payload");
+
+        assert_eq!(payload.session_id.as_deref(), Some("internal-thread-7"));
+        assert_eq!(payload.turn_id.as_deref(), Some("turn-2"));
     }
 }
