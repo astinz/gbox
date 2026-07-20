@@ -49,7 +49,7 @@ export function EvidenceSettingsPanel({ settings, sources, busy, onSave }: Props
   }
 
   return (
-    <Card className="mt-4">
+    <Card>
       <CardHeader className="border-b">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
@@ -70,7 +70,7 @@ export function EvidenceSettingsPanel({ settings, sources, busy, onSave }: Props
         </div>
       </CardHeader>
       <CardContent className="grid gap-5 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
-        <div className="space-y-4">
+        <div className="flex flex-col gap-4">
           <Field orientation="horizontal" className="consent-field">
             <FieldContent>
               <FieldTitle>Use existing Codex MCP configuration</FieldTitle>
@@ -101,7 +101,7 @@ export function EvidenceSettingsPanel({ settings, sources, busy, onSave }: Props
             </FieldDescription>
           </Field>
         </div>
-        <Field>
+        <Field data-invalid={Boolean(error)}>
           <FieldLabel htmlFor="mcp-config">gBox-specific MCP servers (JSON)</FieldLabel>
           <Textarea
             id="mcp-config"
@@ -109,12 +109,13 @@ export function EvidenceSettingsPanel({ settings, sources, busy, onSave }: Props
             value={serversJson}
             onChange={(event) => setServersJson(event.target.value)}
             spellCheck={false}
+            aria-invalid={Boolean(error)}
           />
           <FieldDescription>
             Supports stdio and HTTP transports. Reference secret environment-variable names; never put secret values in this JSON.
           </FieldDescription>
           {error && <p className="text-xs text-destructive">{error}</p>}
-          <div><Button size="sm" onClick={save} disabled={busy}><SaveIcon />Save and discover</Button></div>
+          <div><Button size="sm" onClick={save} disabled={busy}><SaveIcon data-icon="inline-start" />Save and discover</Button></div>
         </Field>
       </CardContent>
     </Card>

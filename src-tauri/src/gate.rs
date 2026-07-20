@@ -47,7 +47,7 @@ impl ActionGate {
         let (sender, receiver) = oneshot::channel();
         self.pending.lock().await.insert(action.id.clone(), sender);
         let _ = self.app.emit("gbox://approval-requested", &action);
-        self.show_approval_window();
+        self.focus_main_window();
 
         match timeout(Duration::from_secs(300), receiver).await {
             Ok(Ok(resolution)) if resolution.decision == "approve" => {
@@ -81,7 +81,6 @@ impl ActionGate {
                 self.pending.lock().await.remove(&action.id);
                 let reason = "gBox approval expired after five minutes.";
                 let _ = self.store.expire_action(&action.id, reason);
-                self.hide_approval_window_if_idle().await;
                 GateResponse {
                     decision: "deny".to_owned(),
                     reason: Some(reason.to_owned()),
@@ -115,7 +114,6 @@ impl ActionGate {
             reason: input.reason,
             approval_token: approval_token.clone(),
         });
-        self.hide_approval_window_if_idle().await;
         if let Ok(receipts) = self.store.list_receipts() {
             if let Some(receipt) = receipts.first() {
                 let _ = self.app.emit("gbox://receipt-created", receipt);
@@ -131,19 +129,10 @@ impl ActionGate {
         !self.pending.lock().await.is_empty()
     }
 
-    fn show_approval_window(&self) {
-        if let Some(window) = self.app.get_webview_window("approval") {
-            let _ = window.set_always_on_top(true);
+    fn focus_main_window(&self) {
+        if let Some(window) = self.app.get_webview_window("main") {
             let _ = window.show();
             let _ = window.set_focus();
-        }
-    }
-
-    async fn hide_approval_window_if_idle(&self) {
-        if self.pending.lock().await.is_empty() {
-            if let Some(window) = self.app.get_webview_window("approval") {
-                let _ = window.hide();
-            }
         }
     }
 }

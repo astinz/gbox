@@ -9,7 +9,6 @@ import {
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import type { Claim, Evidence, VerificationFailure } from "@/types/gbox";
 
 type Props = {
@@ -33,21 +32,16 @@ export function ClaimDetail({ claim, evidence, failures }: Props) {
   const otherSources = eligibleSources.filter((source) => !planMatches(source, plan));
 
   return (
-    <aside className="claim-dossier" aria-label={`Verification detail for ${claim.statement}`}>
-      <div className="claim-dossier__header">
-        <div>
-          <p className="eyebrow">Verification dossier</p>
-          <p className="claim-dossier__id">{claim.id.slice(0, 12)}</p>
-        </div>
+    <article className="claim-detail" aria-label={`Verification detail for ${claim.statement}`}>
+      <div className="claim-detail__meta">
+        <code>{claim.id.slice(0, 12)}</code>
         {latest && (
           <Badge variant="outline" className="font-mono text-[10px]">
             {methodLabels[latest.comparisonMethod]}
           </Badge>
         )}
       </div>
-
-      <ScrollArea className="h-[620px]">
-        <div className="claim-dossier__body">
+      <div className="claim-dossier__body">
           <section className="dossier-section">
             <SectionHeading icon={BracesIcon} label="Extracted structure" />
             <p className="dossier-statement">{claim.statement}</p>
@@ -160,9 +154,8 @@ export function ClaimDetail({ claim, evidence, failures }: Props) {
               <p className="failure-clear"><CheckCircle2Icon />No verification failures recorded.</p>
             )}
           </section>
-        </div>
-      </ScrollArea>
-    </aside>
+      </div>
+    </article>
   );
 }
 

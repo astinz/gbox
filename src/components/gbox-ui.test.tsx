@@ -1,15 +1,18 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-import { ApprovalPanel } from "@/components/approval-panel";
+import { AppHeader } from "@/components/app-header";
+import { ApprovalDialog } from "@/components/approval-dialog";
+import { ClaimDetail } from "@/components/claim-detail";
 import { ClaimLedger } from "@/components/claim-ledger";
 import { EvidenceSettingsPanel } from "@/components/evidence-settings";
+import { SettingsScreen } from "@/components/settings-screen";
 import { StatusBoard } from "@/components/status-board";
 import { TaskComposer } from "@/components/task-composer";
 import { emptySnapshot, type Claim } from "@/types/gbox";
 
 const gboxMock = vi.hoisted(() => ({
-  resolveAction: vi.fn().mockResolvedValue(undefined),
+  resolveAction: vi.fn().mockResolvedValue({ action: { state: "Approved" } }),
   snapshot: {
     status: {},
     claims: [
@@ -25,7 +28,7 @@ const gboxMock = vi.hoisted(() => ({
         assertedValue: "42",
         unit: "USD",
         sourceSpan: "42 USD",
-        state: "Contradicted",
+        state: "Contradicted" as const,
         confidence: 1,
         createdAt: "2026-07-19T12:00:00Z",
       },
@@ -34,6 +37,13 @@ const gboxMock = vi.hoisted(() => ({
     decisions: [],
     receipts: [],
     events: [],
+    evidenceSettings: {
+      useCodexMcpConfig: true,
+      webSearchMode: "cached",
+      mcpServers: [],
+    },
+    evidenceSources: [],
+    verificationFailures: [],
     actions: [
       {
         id: "01f17438-f7d0-4db9-80e4-e23e59b10bea",
@@ -41,7 +51,7 @@ const gboxMock = vi.hoisted(() => ({
         actionType: "test_webhook",
         reportMarkdown: "A governed report preview",
         payloadHash: "abc",
-        state: "Pending",
+        state: "Pending" as const,
         claimIds: ["claim-1"],
         requestedAt: "2026-07-19T12:00:00Z",
       },
@@ -87,7 +97,6 @@ describe("gBox interface", () => {
           claim("unknown", "Unverifiable"),
         ]}
         evidence={[]}
-        failures={[]}
       />,
     );
     fireEvent.click(screen.getByRole("button", { name: "Contradicted" }));
@@ -98,8 +107,8 @@ describe("gBox interface", () => {
   it("shows a durable verification dossier for the selected claim", () => {
     const selected = claim("claim-detail", "Contradicted");
     render(
-      <ClaimLedger
-        claims={[selected]}
+      <ClaimDetail
+        claim={selected}
         evidence={[{
           id: "evidence-1",
           claimId: selected.id,
@@ -154,6 +163,21 @@ describe("gBox interface", () => {
     expect(screen.getByText("Inspect 1 other eligible source")).toBeInTheDocument();
   });
 
+  it("reveals claim details on demand from the ledger", () => {
+    const selected = claim("claim-on-demand", "Verified");
+    const onSelect = vi.fn();
+    render(
+      <ClaimLedger
+        claims={[selected]}
+        evidence={[]}
+        onSelectClaim={onSelect}
+      />,
+    );
+    expect(screen.queryByRole("heading", { name: "Extracted structure" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Verified test claim/ }));
+    expect(onSelect).toHaveBeenCalledWith(selected);
+  });
+
   it("exposes the global observation consent control", () => {
     const onChange = vi.fn();
     render(<StatusBoard status={emptySnapshot.status} onObservationChange={onChange} />);
@@ -200,8 +224,36 @@ describe("gBox interface", () => {
     }));
   });
 
+  it("presents system-wide controls on a dedicated settings screen", () => {
+    render(
+      <SettingsScreen
+        snapshot={emptySnapshot}
+        busy={false}
+        onObservationChange={vi.fn()}
+        onSaveEvidence={vi.fn()}
+      />,
+    );
+    expect(screen.getByRole("heading", { name: "Settings" })).toBeInTheDocument();
+    expect(screen.getByRole("switch", { name: "Global Codex observation" })).toBeInTheDocument();
+    expect(screen.getAllByText("Evidence sources")).not.toHaveLength(0);
+  });
+
+  it("navigates between the dashboard and settings screens", () => {
+    const navigate = vi.fn();
+    render(<AppHeader screen="dashboard" status={emptySnapshot.status} onNavigate={navigate} />);
+    fireEvent.click(screen.getByRole("button", { name: "Settings" }));
+    expect(navigate).toHaveBeenCalledWith("settings");
+  });
+
   it("shows risk and resolves the real pending approval", () => {
-    const view = render(<ApprovalPanel />);
+    const view = render(
+      <ApprovalDialog
+        action={gboxMock.snapshot.actions[0]}
+        claims={gboxMock.snapshot.claims}
+        busy={false}
+        onResolve={gboxMock.resolveAction}
+      />,
+    );
     expect(screen.getByText("High risk · contradicted")).toBeInTheDocument();
     expect(screen.getByText("A governed report preview")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /approve once/i }));
@@ -211,7 +263,14 @@ describe("gBox interface", () => {
     );
     expect(screen.getByRole("button", { name: /approve once/i })).toBeDisabled();
     gboxMock.snapshot.actions[0].id = "54e8cadf-c443-4b36-b11b-b84b6ea67532";
-    view.rerender(<ApprovalPanel />);
+    view.rerender(
+      <ApprovalDialog
+        action={gboxMock.snapshot.actions[0]}
+        claims={gboxMock.snapshot.claims}
+        busy={false}
+        onResolve={gboxMock.resolveAction}
+      />,
+    );
     expect(screen.getByRole("button", { name: /approve once/i })).toBeEnabled();
   });
 });

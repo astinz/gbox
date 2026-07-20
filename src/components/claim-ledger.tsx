@@ -1,47 +1,49 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { CheckIcon, CircleHelpIcon, XIcon } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { ClaimDetail } from "@/components/claim-detail";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import type { Claim, ClaimState, Evidence, VerificationFailure } from "@/types/gbox";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import type { Claim, ClaimState, Evidence } from "@/types/gbox";
 
-type Props = { claims: Claim[]; evidence: Evidence[]; failures: VerificationFailure[] };
+type Props = {
+  claims: Claim[];
+  evidence: Evidence[];
+  onSelectClaim?: (claim: Claim) => void;
+};
 type Filter = "All" | ClaimState;
 
 const filters: Filter[] = ["All", "Verified", "Contradicted", "Unverifiable"];
 
-export function ClaimLedger({ claims, evidence, failures }: Props) {
+export function ClaimLedger({ claims, evidence, onSelectClaim }: Props) {
   const [filter, setFilter] = useState<Filter>("All");
-  const [selectedId, setSelectedId] = useState<string>();
   const visible = useMemo(
     () => claims.filter((claim) => filter === "All" || claim.state === filter),
     [claims, filter],
   );
-  const selected = visible.find((claim) => claim.id === selectedId) ?? visible[0];
-
-  useEffect(() => {
-    if (selected && selected.id !== selectedId) setSelectedId(selected.id);
-  }, [selected, selectedId]);
 
   return (
-    <div className="verification-workbench">
-      <div className="panel-surface claim-index">
+    <div className="panel-surface claim-index">
         <div className="panel-toolbar">
           <div>
             <p className="eyebrow">Evidence ledger</p>
             <h2 className="panel-title">Claims</h2>
           </div>
-          <div className="flex flex-wrap gap-1" aria-label="Claim state filters">
+          <ToggleGroup
+            value={[filter]}
+            onValueChange={(value) => setFilter((value[0] as Filter | undefined) ?? "All")}
+            variant="outline"
+            size="sm"
+            aria-label="Claim state filters"
+          >
             {filters.map((item) => (
-              <Button key={item} size="sm" variant={filter === item ? "secondary" : "ghost"} onClick={() => setFilter(item)}>
+              <ToggleGroupItem key={item} value={item} aria-label={item}>
                 {item}
-              </Button>
+              </ToggleGroupItem>
             ))}
-          </div>
+          </ToggleGroup>
         </div>
         {visible.length === 0 ? (
           <Empty className="min-h-72">
@@ -52,7 +54,7 @@ export function ClaimLedger({ claims, evidence, failures }: Props) {
             </EmptyHeader>
           </Empty>
         ) : (
-          <ScrollArea className="h-[620px]">
+          <ScrollArea className="h-[min(620px,62svh)]">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -65,10 +67,10 @@ export function ClaimLedger({ claims, evidence, failures }: Props) {
                 {visible.map((claim) => {
                   const proof = evidence.find((item) => item.claimId === claim.id);
                   return (
-                    <TableRow key={claim.id} data-state={claim.id === selected?.id ? "selected" : undefined}>
+                    <TableRow key={claim.id}>
                       <TableCell><VerdictBadge state={claim.state} /></TableCell>
                       <TableCell className="max-w-md">
-                        <button className="claim-select" onClick={() => setSelectedId(claim.id)}>
+                        <button className="claim-select" onClick={() => onSelectClaim?.(claim)}>
                           <span>{claim.statement}</span>
                           <small>{claim.subject ?? "?"} / {claim.predicate ?? "?"} / {claim.temporalContext ?? "timeless"}</small>
                         </button>
@@ -83,14 +85,6 @@ export function ClaimLedger({ claims, evidence, failures }: Props) {
             </Table>
           </ScrollArea>
         )}
-      </div>
-      {selected && (
-        <ClaimDetail
-          claim={selected}
-          evidence={evidence.filter((item) => item.claimId === selected.id)}
-          failures={failures.filter((item) => item.claimId === selected.id)}
-        />
-      )}
     </div>
   );
 }

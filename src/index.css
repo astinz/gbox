@@ -143,7 +143,27 @@
   .brand-mark svg { @apply size-4; }
   .brand-name { @apply block text-lg leading-none; }
   .brand-subtitle { @apply mt-1 block font-mono text-[10px] font-normal uppercase tracking-[0.18em] text-muted-foreground; }
-  .top-grid { @apply grid gap-4 lg:grid-cols-[minmax(0,1.7fr)_minmax(320px,0.8fr)]; }
+  .page-intro { @apply mb-4 flex items-end justify-between gap-8; }
+  .page-intro > div { @apply min-w-0; }
+  .page-intro h1 { @apply mt-1 text-3xl font-semibold tracking-[-0.035em]; }
+  .page-intro > p { @apply max-w-lg text-right text-sm leading-relaxed text-muted-foreground; }
+  .page-intro--settings { @apply mb-6; }
+  .dashboard-grid { @apply grid items-start gap-4 xl:grid-cols-[minmax(0,1.08fr)_minmax(500px,0.92fr)]; }
+  .dashboard-overview { @apply grid gap-4; }
+  .overview-card { @apply border-t-4 border-t-accent; }
+  .metric-grid { @apply grid grid-cols-2 gap-px overflow-hidden rounded-lg border bg-border; }
+  .metric { @apply grid min-w-0 grid-cols-[22px_minmax(0,1fr)] gap-2 bg-card p-3; }
+  .metric > svg { @apply mt-0.5 size-4 text-muted-foreground; }
+  .metric div { @apply grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-2; }
+  .metric span { @apply truncate text-xs text-muted-foreground; }
+  .metric strong { @apply font-mono text-xl leading-none; }
+  .metric small { @apply col-span-2 mt-1 font-mono text-[9px] uppercase tracking-wider text-muted-foreground; }
+  .recent-claims-card { @apply min-h-64; }
+  .recent-claims { @apply flex flex-col gap-1; }
+  .recent-claim { @apply grid w-full grid-cols-[auto_minmax(0,1fr)_18px] items-center gap-3 rounded-lg px-2 py-2.5 text-left outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring; }
+  .recent-claim > span:nth-child(2) { @apply line-clamp-2 text-sm leading-snug; }
+  .recent-claim > svg { @apply size-3.5 text-muted-foreground; }
+  .settings-layout { @apply grid items-start gap-4 xl:grid-cols-[360px_minmax(0,1fr)]; }
   .composer-card { @apply border-t-4 border-t-foreground; }
   .status-card { @apply border-t-4 border-t-accent; }
   .live-kicker { @apply inline-flex items-center gap-1 rounded-full bg-foreground px-2 py-1 font-mono text-[10px] uppercase tracking-wider text-background; }
@@ -166,23 +186,19 @@
   .timeline-node { @apply mt-1.5 block size-2 shrink-0 rounded-full bg-foreground ring-4 ring-muted; }
   .timeline-node--replay { @apply bg-amber-600; }
   .history-row { @apply p-4; }
-  .approval-shell { @apply mx-auto min-h-svh max-w-xl p-5; }
-  .approval-card { @apply border-t-4 border-t-amber-500; }
+  .app-dialog { @apply max-h-[calc(100svh-2rem)] gap-0 overflow-hidden p-0; }
+  .app-dialog__header { @apply border-b px-5 py-4 pr-12; }
+  .app-dialog__body { @apply min-h-0 overflow-y-auto p-4; }
+  .app-dialog__footer { @apply m-0 shrink-0 rounded-none px-5 py-4; }
+  .approval-dialog__body { @apply p-5; }
   .report-preview { @apply rounded-md border bg-muted/40; }
-  .approve-button { @apply bg-emerald-700 text-white hover:bg-emerald-800; }
-  .risk--high { @apply border-red-200 bg-red-100 text-red-800; }
-  .risk--caution { @apply border-amber-200 bg-amber-100 text-amber-900; }
-  .risk--low { @apply border-emerald-200 bg-emerald-100 text-emerald-800; }
-  .verification-workbench { @apply grid items-start gap-3 lg:grid-cols-[minmax(0,0.92fr)_minmax(430px,1.08fr)]; }
   .claim-index { @apply min-w-0; }
   .claim-select { @apply block w-full rounded-sm text-left outline-none focus-visible:ring-2 focus-visible:ring-ring; }
   .claim-select span { @apply block font-medium leading-snug; }
   .claim-select small { @apply mt-1 block font-mono text-[10px] leading-relaxed text-muted-foreground; }
-  .claim-dossier { @apply min-w-0 overflow-hidden rounded-lg border border-foreground/30 bg-card shadow-[4px_4px_0_0_var(--foreground)]; }
-  .claim-dossier__header { @apply flex min-h-18 items-center justify-between gap-3 border-b border-foreground bg-foreground px-4 py-3 text-background; }
-  .claim-dossier__header .eyebrow { @apply text-background/60; }
-  .claim-dossier__id { @apply mt-1 font-mono text-xs tracking-[0.12em]; }
-  .claim-dossier__header [data-slot="badge"] { @apply border-background/30 bg-background/10 text-background; }
+  .claim-detail { @apply overflow-hidden rounded-lg border bg-card; }
+  .claim-detail__meta { @apply flex items-center justify-between gap-3 border-b bg-muted/50 px-4 py-3; }
+  .claim-detail__meta code { @apply font-mono text-xs tracking-[0.12em] text-muted-foreground; }
   .claim-dossier__body { @apply divide-y divide-foreground/15; }
   .dossier-section { @apply p-4; }
   .dossier-heading { @apply mb-3 flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground; }

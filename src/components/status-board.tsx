@@ -43,7 +43,7 @@ export function StatusBoard({ status, onObservationChange }: Props) {
           </Badge>
         </div>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="flex flex-col gap-4">
         <div className="grid gap-1.5">
           {checks.map(({ label, value, icon: Icon, detail }) => (
             <div className="status-row" key={label}>

@@ -1,86 +1,55 @@
-import { getCurrentWindow } from "@tauri-apps/api/window";
-import { CircleAlertIcon, ShieldCheckIcon } from "lucide-react";
+import { useState } from "react";
+import { CircleAlertIcon } from "lucide-react";
 
-import { ActionHistory } from "@/components/action-history";
-import { ApprovalPanel } from "@/components/approval-panel";
-import { ClaimLedger } from "@/components/claim-ledger";
-import { EventTimeline } from "@/components/event-timeline";
-import { EvidenceSettingsPanel } from "@/components/evidence-settings";
-import { StatusBoard } from "@/components/status-board";
-import { TaskComposer } from "@/components/task-composer";
+import { AppHeader, type AppScreen } from "@/components/app-header";
+import { ApprovalDialog } from "@/components/approval-dialog";
+import { DashboardScreen } from "@/components/dashboard-screen";
+import { SettingsScreen } from "@/components/settings-screen";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useGbox } from "@/hooks/use-gbox";
 
 function App() {
-  if (getCurrentWindow().label === "approval") return <ApprovalPanel />;
-  return <Dashboard />;
-}
-
-function Dashboard() {
   const gbox = useGbox();
+  const [screen, setScreen] = useState<AppScreen>("dashboard");
+  const pendingAction = gbox.snapshot.actions.find((action) => action.state === "Pending");
 
   return (
     <main className="app-shell">
-      <header className="app-header">
-        <div className="brand-lockup">
-          <span className="brand-mark"><ShieldCheckIcon /></span>
-          <div><span className="brand-name">gBox</span><span className="brand-subtitle">evidence & control layer</span></div>
-        </div>
-        <div className="flex items-center gap-2">
-          <Badge variant={gbox.snapshot.status.receiptChainValid ? "outline" : "destructive"}>
-            Chain {gbox.snapshot.status.receiptChainValid ? "verified" : "broken"}
-          </Badge>
-          <Badge variant="secondary">macOS local</Badge>
-        </div>
-      </header>
+      <AppHeader screen={screen} status={gbox.snapshot.status} onNavigate={setScreen} />
 
-      {gbox.error && (
+      {gbox.error ? (
         <Alert variant="destructive" className="mb-4">
           <CircleAlertIcon />
           <AlertTitle>gBox could not complete the request</AlertTitle>
           <AlertDescription>{gbox.error}</AlertDescription>
         </Alert>
-      )}
+      ) : null}
 
-      <section className="top-grid">
-        <TaskComposer
+      {screen === "dashboard" ? (
+        <DashboardScreen
+          snapshot={gbox.snapshot}
           busy={gbox.busy}
           sessionId={gbox.sessionId}
           onStartLive={(cwd, prompt) => void gbox.startLive(cwd, prompt)}
           onContinue={(prompt) => void gbox.sendPrompt(prompt)}
           onReplay={() => void gbox.startReplay()}
         />
-        <StatusBoard
-          status={gbox.snapshot.status}
+      ) : (
+        <SettingsScreen
+          snapshot={gbox.snapshot}
+          busy={gbox.busy}
           onObservationChange={(enabled) => void gbox.setGlobalObservation(enabled)}
+          onSaveEvidence={(settings) => void gbox.updateEvidenceSettings(settings)}
         />
-      </section>
+      )}
 
-      <EvidenceSettingsPanel
-        settings={gbox.snapshot.evidenceSettings}
-        sources={gbox.snapshot.evidenceSources}
+      <ApprovalDialog
+        action={pendingAction}
+        claims={gbox.snapshot.claims}
         busy={gbox.busy}
-        onSave={(settings) => void gbox.updateEvidenceSettings(settings)}
+        error={gbox.error}
+        onResolve={gbox.resolveAction}
       />
-
-      <Tabs defaultValue="claims" className="mt-4">
-        <TabsList variant="line" className="mb-3">
-          <TabsTrigger value="claims">Claims <span className="tab-count">{gbox.snapshot.claims.length}</span></TabsTrigger>
-          <TabsTrigger value="events">App Server <span className="tab-count">{gbox.snapshot.events.length}</span></TabsTrigger>
-          <TabsTrigger value="actions">Actions & receipts <span className="tab-count">{gbox.snapshot.actions.length}</span></TabsTrigger>
-        </TabsList>
-        <TabsContent value="claims">
-          <ClaimLedger
-            claims={gbox.snapshot.claims}
-            evidence={gbox.snapshot.evidence}
-            failures={gbox.snapshot.verificationFailures}
-          />
-        </TabsContent>
-        <TabsContent value="events"><EventTimeline events={gbox.snapshot.events} /></TabsContent>
-        <TabsContent value="actions"><ActionHistory actions={gbox.snapshot.actions} receipts={gbox.snapshot.receipts} /></TabsContent>
-      </Tabs>
     </main>
   );
 }
