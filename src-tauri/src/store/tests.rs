@@ -3,12 +3,14 @@ use super::*;
 fn sample_candidate(value: &str) -> ClaimCandidate {
     ClaimCandidate {
         statement: format!("Acme has {value} production database users."),
-        claim_type: "company_metric".to_owned(),
-        company_id: Some("acme".to_owned()),
-        metric: Some("production_database_users".to_owned()),
-        period: Some("2026-Q2".to_owned()),
+        claim_type: "quantity".to_owned(),
+        subject: Some("acme".to_owned()),
+        predicate: Some("production_database_users".to_owned()),
+        object: Some("production database users".to_owned()),
         asserted_value: Some(value.to_owned()),
         unit: Some("count".to_owned()),
+        temporal_context: Some("2026-Q2".to_owned()),
+        location: None,
         source_span: format!("{value} production database users"),
     }
 }
@@ -29,6 +31,8 @@ fn approved_action(store: &Store) -> (PendingAction, String) {
     store
         .insert_evidence(
             &claim.id,
+            "mcp",
+            "test_metric",
             "test:mcp",
             None,
             "evidence-hash",

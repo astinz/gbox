@@ -9,9 +9,11 @@ use sha2::{Digest, Sha256};
 use uuid::Uuid;
 
 use crate::domain::{
-    ActionState, Claim, ClaimCandidate, ClaimState, CodexEvent, CompanyMetricRecord, Decision,
-    Evidence, PendingAction, Receipt,
+    ActionState, Claim, ClaimCandidate, ClaimState, CodexEvent, Decision, Evidence, PendingAction,
+    Receipt,
 };
+
+mod schema;
 
 const GENESIS_HASH: &str = "0000000000000000000000000000000000000000000000000000000000000000";
 
@@ -49,110 +51,7 @@ impl Store {
 
     fn migrate(&self) -> Result<()> {
         let connection = self.lock()?;
-        connection.execute_batch(
-            r#"
-            CREATE TABLE IF NOT EXISTS settings (
-              key TEXT PRIMARY KEY,
-              value TEXT NOT NULL
-            );
-            CREATE TABLE IF NOT EXISTS sessions (
-              id TEXT PRIMARY KEY,
-              source TEXT NOT NULL,
-              cwd TEXT,
-              created_at TEXT NOT NULL
-            );
-            CREATE TABLE IF NOT EXISTS events (
-              id TEXT PRIMARY KEY,
-              session_id TEXT,
-              method TEXT NOT NULL,
-              summary TEXT NOT NULL,
-              payload_json TEXT NOT NULL,
-              source TEXT NOT NULL,
-              created_at TEXT NOT NULL
-            );
-            CREATE TABLE IF NOT EXISTS claims (
-              id TEXT PRIMARY KEY,
-              dedupe_key TEXT NOT NULL UNIQUE,
-              session_id TEXT NOT NULL,
-              turn_id TEXT,
-              statement TEXT NOT NULL,
-              claim_type TEXT NOT NULL,
-              company_id TEXT,
-              metric TEXT,
-              period TEXT,
-              asserted_value TEXT,
-              unit TEXT,
-              source_span TEXT NOT NULL,
-              state TEXT NOT NULL,
-              confidence REAL NOT NULL,
-              created_at TEXT NOT NULL
-            );
-            CREATE TABLE IF NOT EXISTS evidence (
-              id TEXT PRIMARY KEY,
-              claim_id TEXT NOT NULL REFERENCES claims(id) ON DELETE CASCADE,
-              source_kind TEXT NOT NULL,
-              source_reference TEXT NOT NULL,
-              record_json TEXT,
-              result_hash TEXT NOT NULL,
-              explanation TEXT NOT NULL,
-              created_at TEXT NOT NULL
-            );
-            CREATE TABLE IF NOT EXISTS actions (
-              id TEXT PRIMARY KEY,
-              session_id TEXT NOT NULL,
-              turn_id TEXT,
-              tool_use_id TEXT,
-              action_type TEXT NOT NULL,
-              report_markdown TEXT NOT NULL,
-              payload_hash TEXT NOT NULL,
-              state TEXT NOT NULL,
-              claim_ids_json TEXT NOT NULL,
-              requested_at TEXT NOT NULL,
-              decided_at TEXT,
-              executed_at TEXT
-            );
-            CREATE TABLE IF NOT EXISTS decisions (
-              id TEXT PRIMARY KEY,
-              action_id TEXT NOT NULL REFERENCES actions(id) ON DELETE CASCADE,
-              decision TEXT NOT NULL,
-              reason TEXT,
-              decided_by TEXT NOT NULL,
-              decided_at TEXT NOT NULL
-            );
-            CREATE TABLE IF NOT EXISTS permits (
-              token_hash TEXT PRIMARY KEY,
-              action_id TEXT NOT NULL REFERENCES actions(id) ON DELETE CASCADE,
-              payload_hash TEXT NOT NULL,
-              expires_at INTEGER NOT NULL,
-              consumed_at INTEGER
-            );
-            CREATE TABLE IF NOT EXISTS webhook_deliveries (
-              id TEXT PRIMARY KEY,
-              action_id TEXT NOT NULL REFERENCES actions(id) ON DELETE CASCADE,
-              payload_hash TEXT NOT NULL,
-              delivered_at TEXT NOT NULL
-            );
-            CREATE TABLE IF NOT EXISTS receipts (
-              sequence INTEGER PRIMARY KEY AUTOINCREMENT,
-              id TEXT NOT NULL UNIQUE,
-              event_type TEXT NOT NULL,
-              entity_id TEXT NOT NULL,
-              payload_json TEXT NOT NULL,
-              previous_hash TEXT NOT NULL,
-              hash TEXT NOT NULL,
-              created_at TEXT NOT NULL
-            );
-            CREATE TABLE IF NOT EXISTS schema_migrations (
-              version INTEGER PRIMARY KEY,
-              applied_at TEXT NOT NULL
-            );
-            "#,
-        )?;
-        connection.execute(
-            "INSERT OR IGNORE INTO schema_migrations (version, applied_at) VALUES (1, ?1)",
-            params![now()],
-        )?;
-        Ok(())
+        schema::migrate(&connection)
     }
 
     pub fn create_session(&self, id: &str, source: &str, cwd: Option<&str>) -> Result<()> {
@@ -240,8 +139,9 @@ impl Store {
         transaction.execute(
             r#"INSERT INTO claims (
               id, dedupe_key, session_id, turn_id, statement, claim_type, company_id,
-              metric, period, asserted_value, unit, source_span, state, confidence, created_at
-            ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)
+              metric, period, asserted_value, unit, source_span, state, confidence, created_at,
+              subject, predicate, object_value, temporal_context, location
+            ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, NULL, NULL, NULL, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17)
             ON CONFLICT(dedupe_key) DO UPDATE SET
               state=excluded.state, confidence=excluded.confidence, source_span=excluded.source_span"#,
             params![
@@ -251,15 +151,17 @@ impl Store {
                 turn_id,
                 candidate.statement,
                 candidate.claim_type,
-                candidate.company_id,
-                candidate.metric,
-                candidate.period,
                 candidate.asserted_value,
                 candidate.unit,
                 candidate.source_span,
                 state.as_db(),
                 confidence,
                 created_at,
+                candidate.subject,
+                candidate.predicate,
+                candidate.object,
+                candidate.temporal_context,
+                candidate.location,
             ],
         )?;
         let claim = transaction.query_row(
@@ -280,37 +182,44 @@ impl Store {
     pub fn insert_evidence(
         &self,
         claim_id: &str,
+        source_kind: &str,
+        source_name: &str,
         source_reference: &str,
-        record: Option<&CompanyMetricRecord>,
+        content: Option<&Value>,
         result_hash: &str,
         explanation: &str,
     ) -> Result<Evidence> {
         let evidence = Evidence {
             id: Uuid::new_v4().to_string(),
             claim_id: claim_id.to_owned(),
-            source_kind: "mcp.company_data".to_owned(),
+            source_kind: source_kind.to_owned(),
+            source_name: source_name.to_owned(),
             source_reference: source_reference.to_owned(),
-            record: record.cloned(),
+            content: content.cloned(),
             result_hash: result_hash.to_owned(),
             explanation: explanation.to_owned(),
             created_at: now(),
         };
         let connection = self.lock()?;
         connection.execute(
-            "INSERT INTO evidence VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+            r#"INSERT INTO evidence (
+              id, claim_id, source_kind, source_reference, record_json,
+              result_hash, explanation, created_at, source_name
+            ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)"#,
             params![
                 evidence.id,
                 evidence.claim_id,
                 evidence.source_kind,
                 evidence.source_reference,
                 evidence
-                    .record
+                    .content
                     .as_ref()
                     .map(serde_json::to_string)
                     .transpose()?,
                 evidence.result_hash,
                 evidence.explanation,
                 evidence.created_at,
+                evidence.source_name,
             ],
         )?;
         Ok(evidence)
@@ -668,9 +577,11 @@ pub fn sha256_hex(bytes: &[u8]) -> String {
 fn claim_dedupe_key(session_id: &str, candidate: &ClaimCandidate) -> String {
     let value = json!({
         "sessionId": session_id,
-        "companyId": candidate.company_id.as_deref().map(normalize_key_part),
-        "metric": candidate.metric.as_deref().map(normalize_key_part),
-        "period": candidate.period.as_deref().map(normalize_key_part),
+        "subject": candidate.subject.as_deref().map(normalize_key_part),
+        "predicate": candidate.predicate.as_deref().map(normalize_key_part),
+        "object": candidate.object.as_deref().map(normalize_key_part),
+        "temporalContext": candidate.temporal_context.as_deref().map(normalize_key_part),
+        "location": candidate.location.as_deref().map(normalize_key_part),
         "assertedValue": candidate.asserted_value.as_deref().map(normalize_claim_value),
     });
     sha256_hex(value.to_string().as_bytes())
@@ -821,17 +732,24 @@ fn governance_receipt_payload(
 
 fn claim_from_row(row: &Row<'_>) -> rusqlite::Result<Claim> {
     let state: String = row.get(12)?;
+    let legacy_subject: Option<String> = row.get(6)?;
+    let legacy_predicate: Option<String> = row.get(7)?;
+    let legacy_temporal_context: Option<String> = row.get(8)?;
     Ok(Claim {
         id: row.get(0)?,
         session_id: row.get(2)?,
         turn_id: row.get(3)?,
         statement: row.get(4)?,
         claim_type: row.get(5)?,
-        company_id: row.get(6)?,
-        metric: row.get(7)?,
-        period: row.get(8)?,
+        subject: row.get::<_, Option<String>>(15)?.or(legacy_subject),
+        predicate: row.get::<_, Option<String>>(16)?.or(legacy_predicate),
+        object: row.get(17)?,
         asserted_value: row.get(9)?,
         unit: row.get(10)?,
+        temporal_context: row
+            .get::<_, Option<String>>(18)?
+            .or(legacy_temporal_context),
+        location: row.get(19)?,
         source_span: row.get(11)?,
         state: ClaimState::try_from(state.as_str()).map_err(conversion_error)?,
         confidence: row.get(13)?,
@@ -841,12 +759,14 @@ fn claim_from_row(row: &Row<'_>) -> rusqlite::Result<Claim> {
 
 fn evidence_from_row(row: &Row<'_>) -> rusqlite::Result<Evidence> {
     let record_json: Option<String> = row.get(4)?;
+    let source_kind: String = row.get(2)?;
     Ok(Evidence {
         id: row.get(0)?,
         claim_id: row.get(1)?,
-        source_kind: row.get(2)?,
+        source_kind: source_kind.clone(),
+        source_name: row.get::<_, Option<String>>(8)?.unwrap_or(source_kind),
         source_reference: row.get(3)?,
-        record: record_json
+        content: record_json
             .map(|value| serde_json::from_str(&value).map_err(json_error))
             .transpose()?,
         result_hash: row.get(5)?,

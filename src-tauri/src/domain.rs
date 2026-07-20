@@ -77,11 +77,13 @@ impl TryFrom<&str> for ActionState {
 pub struct ClaimCandidate {
     pub statement: String,
     pub claim_type: String,
-    pub company_id: Option<String>,
-    pub metric: Option<String>,
-    pub period: Option<String>,
+    pub subject: Option<String>,
+    pub predicate: Option<String>,
+    pub object: Option<String>,
     pub asserted_value: Option<String>,
     pub unit: Option<String>,
+    pub temporal_context: Option<String>,
+    pub location: Option<String>,
     pub source_span: String,
 }
 
@@ -93,11 +95,13 @@ pub struct Claim {
     pub turn_id: Option<String>,
     pub statement: String,
     pub claim_type: String,
-    pub company_id: Option<String>,
-    pub metric: Option<String>,
-    pub period: Option<String>,
+    pub subject: Option<String>,
+    pub predicate: Option<String>,
+    pub object: Option<String>,
     pub asserted_value: Option<String>,
     pub unit: Option<String>,
+    pub temporal_context: Option<String>,
+    pub location: Option<String>,
     pub source_span: String,
     pub state: ClaimState,
     pub confidence: f64,
@@ -128,8 +132,9 @@ pub struct Evidence {
     pub id: String,
     pub claim_id: String,
     pub source_kind: String,
+    pub source_name: String,
     pub source_reference: String,
-    pub record: Option<CompanyMetricRecord>,
+    pub content: Option<Value>,
     pub result_hash: String,
     pub explanation: String,
     pub created_at: String,
@@ -198,7 +203,8 @@ pub struct SystemStatus {
     pub app_server_connected: bool,
     pub plugin_installed: bool,
     pub hooks_trusted: bool,
-    pub company_mcp_ready: bool,
+    pub evidence_sources_ready: bool,
+    pub evidence_source_count: usize,
     pub global_observation: bool,
     pub receipt_chain_valid: bool,
     pub replay_mode: bool,
@@ -215,6 +221,88 @@ pub struct DashboardSnapshot {
     pub decisions: Vec<Decision>,
     pub receipts: Vec<Receipt>,
     pub events: Vec<CodexEvent>,
+    pub evidence_settings: EvidenceSettings,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct EvidenceSettings {
+    pub use_codex_mcp_config: bool,
+    pub web_search_mode: WebSearchMode,
+    pub mcp_servers: Vec<ConfiguredMcpServer>,
+}
+
+impl Default for EvidenceSettings {
+    fn default() -> Self {
+        Self {
+            use_codex_mcp_config: true,
+            web_search_mode: WebSearchMode::Cached,
+            mcp_servers: Vec::new(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ConfiguredMcpServer {
+    pub name: String,
+    pub enabled: bool,
+    #[serde(flatten)]
+    pub transport: McpTransport,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(tag = "transport", rename_all = "snake_case")]
+pub enum McpTransport {
+    Stdio {
+        command: String,
+        #[serde(default)]
+        args: Vec<String>,
+        cwd: Option<String>,
+        #[serde(default)]
+        env_vars: Vec<String>,
+    },
+    Http {
+        url: String,
+        bearer_token_env_var: Option<String>,
+    },
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum WebSearchMode {
+    Disabled,
+    Cached,
+    Live,
+}
+
+impl WebSearchMode {
+    pub fn as_config(&self) -> &'static str {
+        match self {
+            Self::Disabled => "disabled",
+            Self::Cached => "cached",
+            Self::Live => "live",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EvidenceSource {
+    pub source_kind: String,
+    pub server: Option<String>,
+    pub tool: Option<String>,
+    pub title: String,
+    pub description: String,
+    pub input_schema: Value,
+    pub read_only: bool,
+    pub plugin_backed: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateEvidenceSettingsInput {
+    pub settings: EvidenceSettings,
 }
 
 #[derive(Debug, Clone, Deserialize)]

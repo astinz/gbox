@@ -25,7 +25,7 @@ export function ClaimLedger({ claims, evidence }: Props) {
       <div className="panel-toolbar">
         <div>
           <p className="eyebrow">Evidence ledger</p>
-          <h2 className="panel-title">Company claims</h2>
+          <h2 className="panel-title">Claims</h2>
         </div>
         <div className="flex flex-wrap gap-1" aria-label="Claim state filters">
           {filters.map((item) => (
@@ -63,12 +63,12 @@ export function ClaimLedger({ claims, evidence }: Props) {
                     <TableCell className="max-w-md">
                       <p className="font-medium leading-snug">{claim.statement}</p>
                       <p className="mt-1 font-mono text-[11px] text-muted-foreground">
-                        {claim.companyId ?? "?"} / {claim.metric ?? "?"} / {claim.period ?? "?"}
+                        {claim.subject ?? "?"} / {claim.predicate ?? "?"} / {claim.temporalContext ?? "timeless"}
                       </p>
                     </TableCell>
                     <TableCell className="font-mono text-xs">{claim.assertedValue ?? "—"} {claim.unit ?? ""}</TableCell>
                     <TableCell className="font-mono text-xs">
-                      {proof?.record ? `${proof.record.value} ${proof.record.unit}` : "No record"}
+                      {proof ? summarizeEvidence(proof) : "No evidence"}
                     </TableCell>
                   </TableRow>
                 );
@@ -79,6 +79,19 @@ export function ClaimLedger({ claims, evidence }: Props) {
       )}
     </div>
   );
+}
+
+function summarizeEvidence(evidence: Evidence): string {
+  const content = evidence.content;
+  if (content && typeof content === "object") {
+    const record = "record" in content && content.record && typeof content.record === "object"
+      ? content.record as Record<string, unknown>
+      : content as Record<string, unknown>;
+    if (typeof record.value === "string") {
+      return `${record.value}${typeof record.unit === "string" ? ` ${record.unit}` : ""}`;
+    }
+  }
+  return evidence.sourceName;
 }
 
 export function VerdictBadge({ state }: { state: ClaimState }) {

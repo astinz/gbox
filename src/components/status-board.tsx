@@ -25,7 +25,12 @@ export function StatusBoard({ status, onObservationChange }: Props) {
     { label: "App Server", value: status.appServerConnected, icon: CableIcon, detail: status.appServerConnected ? "JSONL connected" : "starts on first live task" },
     { label: "Control plugin", value: status.pluginInstalled, icon: BlocksIcon, detail: status.pluginInstalled ? "installed" : "install from local marketplace" },
     { label: "Trusted hooks", value: status.hooksTrusted, icon: Link2Icon, detail: status.hooksTrusted ? "trusted" : "review with /hooks" },
-    { label: "Company MCP", value: status.companyMcpReady, icon: CheckCircle2Icon, detail: status.companyMcpReady ? "healthy" : "waiting for plugin" },
+    {
+      label: "Evidence sources",
+      value: status.evidenceSourcesReady,
+      icon: CheckCircle2Icon,
+      detail: status.evidenceSourcesReady ? `${status.evidenceSourceCount} available` : "connect App Server to discover",
+    },
   ];
 
   return (

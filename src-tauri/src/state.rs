@@ -7,7 +7,7 @@ use anyhow::Result;
 
 use crate::{
     codex::CodexSupervisor,
-    domain::{DashboardSnapshot, SystemStatus},
+    domain::{DashboardSnapshot, EvidenceSettings, SystemStatus},
     gate::ActionGate,
     store::Store,
 };
@@ -53,6 +53,7 @@ impl ApplicationState {
             decisions: self.store.list_decisions()?,
             receipts: self.store.list_receipts()?,
             events: self.store.list_events()?,
+            evidence_settings: EvidenceSettings::default(),
         })
     }
 

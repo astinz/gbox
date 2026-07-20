@@ -21,14 +21,14 @@ pub fn verify_candidate(
     record: Option<CompanyMetricRecord>,
     source_error: Option<&str>,
 ) -> VerificationOutcome {
-    let Some(company_id) = candidate.company_id.as_deref() else {
-        return unverifiable(record, "The claim does not identify a company.");
+    let Some(company_id) = candidate.subject.as_deref() else {
+        return unverifiable(record, "The claim does not identify a subject.");
     };
-    let Some(metric) = candidate.metric.as_deref() else {
-        return unverifiable(record, "The claim does not identify a supported metric.");
+    let Some(metric) = candidate.predicate.as_deref() else {
+        return unverifiable(record, "The claim does not identify a predicate.");
     };
-    let Some(period) = candidate.period.as_deref() else {
-        return unverifiable(record, "The claim does not identify a reporting period.");
+    let Some(period) = candidate.temporal_context.as_deref() else {
+        return unverifiable(record, "The claim does not identify a temporal context.");
     };
     let Some(asserted_value) = candidate.asserted_value.as_deref() else {
         return unverifiable(record, "The claim does not contain a comparable value.");
@@ -101,9 +101,9 @@ pub fn seed_records() -> Result<Vec<CompanyMetricRecord>> {
 
 pub fn find_seed_record(candidate: &ClaimCandidate) -> Result<Option<CompanyMetricRecord>> {
     let (Some(company_id), Some(metric), Some(period)) = (
-        candidate.company_id.as_deref(),
-        candidate.metric.as_deref(),
-        candidate.period.as_deref(),
+        candidate.subject.as_deref(),
+        candidate.predicate.as_deref(),
+        candidate.temporal_context.as_deref(),
     ) else {
         return Ok(None);
     };
@@ -151,12 +151,14 @@ mod tests {
     fn candidate(value: Option<&str>, metric: Option<&str>) -> ClaimCandidate {
         ClaimCandidate {
             statement: "Acme production database users in 2026-Q2".to_owned(),
-            claim_type: "company_metric".to_owned(),
-            company_id: Some("acme".to_owned()),
-            metric: metric.map(str::to_owned),
-            period: Some("2026-Q2".to_owned()),
+            claim_type: "quantity".to_owned(),
+            subject: Some("acme".to_owned()),
+            predicate: metric.map(str::to_owned),
+            object: Some("production database users".to_owned()),
             asserted_value: value.map(str::to_owned),
             unit: Some("count".to_owned()),
+            temporal_context: Some("2026-Q2".to_owned()),
+            location: None,
             source_span: "production database users".to_owned(),
         }
     }

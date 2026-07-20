@@ -58,8 +58,15 @@ pub async fn start_replay(
         )?;
         state.store.insert_evidence(
             &claim.id,
+            "plugin_mcp",
+            "company_get_metric",
             "replay:mcpServer/toolCall:company_get_metric",
-            outcome.record.as_ref(),
+            outcome
+                .record
+                .as_ref()
+                .map(serde_json::to_value)
+                .transpose()?
+                .as_ref(),
             &outcome.result_hash,
             &outcome.explanation,
         )?;
@@ -139,32 +146,38 @@ fn replay_candidates() -> Vec<ClaimCandidate> {
     vec![
         ClaimCandidate {
             statement: "Acme had 17 production database users in 2026-Q2.".to_owned(),
-            claim_type: "company_metric".to_owned(),
-            company_id: Some("acme".to_owned()),
-            metric: Some("production_database_users".to_owned()),
-            period: Some("2026-Q2".to_owned()),
+            claim_type: "quantity".to_owned(),
+            subject: Some("acme".to_owned()),
+            predicate: Some("production_database_users".to_owned()),
+            object: Some("production database users".to_owned()),
             asserted_value: Some("17".to_owned()),
             unit: Some("count".to_owned()),
+            temporal_context: Some("2026-Q2".to_owned()),
+            location: None,
             source_span: "17 production database users in 2026-Q2".to_owned(),
         },
         ClaimCandidate {
             statement: "Acme reported 42 production database users in 2026-Q2.".to_owned(),
-            claim_type: "company_metric".to_owned(),
-            company_id: Some("acme".to_owned()),
-            metric: Some("production_database_users".to_owned()),
-            period: Some("2026-Q2".to_owned()),
+            claim_type: "quantity".to_owned(),
+            subject: Some("acme".to_owned()),
+            predicate: Some("production_database_users".to_owned()),
+            object: Some("production database users".to_owned()),
             asserted_value: Some("42".to_owned()),
             unit: Some("count".to_owned()),
+            temporal_context: Some("2026-Q2".to_owned()),
+            location: None,
             source_span: "42 production database users in 2026-Q2".to_owned(),
         },
         ClaimCandidate {
             statement: "Acme recorded 3 privileged-access incidents in 2026-Q2.".to_owned(),
-            claim_type: "company_metric".to_owned(),
-            company_id: Some("acme".to_owned()),
-            metric: Some("privileged_access_incidents".to_owned()),
-            period: Some("2026-Q2".to_owned()),
+            claim_type: "quantity".to_owned(),
+            subject: Some("acme".to_owned()),
+            predicate: Some("privileged_access_incidents".to_owned()),
+            object: Some("privileged-access incidents".to_owned()),
             asserted_value: Some("3".to_owned()),
             unit: Some("count".to_owned()),
+            temporal_context: Some("2026-Q2".to_owned()),
+            location: None,
             source_span: "3 privileged-access incidents in 2026-Q2".to_owned(),
         },
     ]

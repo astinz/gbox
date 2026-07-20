@@ -7,29 +7,19 @@ export type ActionState =
   | "Failed"
   | "Expired";
 
-export type CompanyMetricRecord = {
-  recordId: string;
-  companyId: string;
-  metric: string;
-  period: string;
-  value: string;
-  unit: string;
-  asOf: string;
-  sourceSystem: string;
-  version: string;
-};
-
 export type Claim = {
   id: string;
   sessionId: string;
   turnId?: string;
   statement: string;
   claimType: string;
-  companyId?: string;
-  metric?: string;
-  period?: string;
+  subject?: string;
+  predicate?: string;
+  object?: string;
   assertedValue?: string;
   unit?: string;
+  temporalContext?: string;
+  location?: string;
   sourceSpan: string;
   state: ClaimState;
   confidence: number;
@@ -40,8 +30,9 @@ export type Evidence = {
   id: string;
   claimId: string;
   sourceKind: string;
+  sourceName: string;
   sourceReference: string;
-  record?: CompanyMetricRecord;
+  content?: unknown;
   resultHash: string;
   explanation: string;
   createdAt: string;
@@ -100,7 +91,8 @@ export type SystemStatus = {
   appServerConnected: boolean;
   pluginInstalled: boolean;
   hooksTrusted: boolean;
-  companyMcpReady: boolean;
+  evidenceSourcesReady: boolean;
+  evidenceSourceCount: number;
   globalObservation: boolean;
   receiptChainValid: boolean;
   replayMode: boolean;
@@ -115,6 +107,33 @@ export type DashboardSnapshot = {
   decisions: Decision[];
   receipts: Receipt[];
   events: CodexEvent[];
+  evidenceSettings: EvidenceSettings;
+};
+
+export type WebSearchMode = "disabled" | "cached" | "live";
+
+export type ConfiguredMcpServer = {
+  name: string;
+  enabled: boolean;
+} & (
+  | {
+      transport: "stdio";
+      command: string;
+      args: string[];
+      cwd?: string;
+      envVars: string[];
+    }
+  | {
+      transport: "http";
+      url: string;
+      bearerTokenEnvVar?: string;
+    }
+);
+
+export type EvidenceSettings = {
+  useCodexMcpConfig: boolean;
+  webSearchMode: WebSearchMode;
+  mcpServers: ConfiguredMcpServer[];
 };
 
 export const emptySnapshot: DashboardSnapshot = {
@@ -124,7 +143,8 @@ export const emptySnapshot: DashboardSnapshot = {
     appServerConnected: false,
     pluginInstalled: false,
     hooksTrusted: false,
-    companyMcpReady: false,
+    evidenceSourcesReady: false,
+    evidenceSourceCount: 0,
     globalObservation: false,
     receiptChainValid: true,
     replayMode: false,
@@ -135,4 +155,9 @@ export const emptySnapshot: DashboardSnapshot = {
   decisions: [],
   receipts: [],
   events: [],
+  evidenceSettings: {
+    useCodexMcpConfig: true,
+    webSearchMode: "cached",
+    mcpServers: [],
+  },
 };

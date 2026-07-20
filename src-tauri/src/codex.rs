@@ -171,10 +171,17 @@ impl CodexSupervisor {
                 outcome.state,
                 outcome.confidence,
             )?;
+            let evidence_content = outcome
+                .record
+                .as_ref()
+                .map(serde_json::to_value)
+                .transpose()?;
             self.store.insert_evidence(
                 &claim.id,
+                "mcp",
+                "company_get_metric",
                 &source_reference,
-                outcome.record.as_ref(),
+                evidence_content.as_ref(),
                 &outcome.result_hash,
                 &outcome.explanation,
             )?;
@@ -217,7 +224,8 @@ impl CodexSupervisor {
             app_server_connected: self.connected.load(Ordering::Relaxed),
             plugin_installed: self.plugin_installed.load(Ordering::Relaxed),
             hooks_trusted: self.hooks_trusted.load(Ordering::Relaxed),
-            company_mcp_ready: self.company_mcp_ready.load(Ordering::Relaxed),
+            evidence_sources_ready: self.company_mcp_ready.load(Ordering::Relaxed),
+            evidence_source_count: usize::from(self.company_mcp_ready.load(Ordering::Relaxed)),
             diagnostic,
             ..SystemStatus::default()
         }
@@ -485,7 +493,7 @@ impl CodexSupervisor {
             .to_owned();
         self.internal_threads.lock().await.insert(thread_id.clone());
         let prompt = format!(
-            "Extract independently checkable company claims from the following text. Do not verify them.\n\n{text}"
+            "Extract independently checkable factual claims from the following text. Do not verify them.\n\n{text}"
         );
         let turn_id = self
             .start_turn(&thread_id, &prompt, Some(extraction_schema()))
@@ -554,9 +562,9 @@ impl CodexSupervisor {
         candidate: &ClaimCandidate,
     ) -> Result<(Option<CompanyMetricRecord>, Option<String>, String)> {
         let (Some(company_id), Some(metric), Some(period)) = (
-            candidate.company_id.as_deref(),
-            candidate.metric.as_deref(),
-            candidate.period.as_deref(),
+            candidate.subject.as_deref(),
+            candidate.predicate.as_deref(),
+            candidate.temporal_context.as_deref(),
         ) else {
             return Ok((None, None, "mcpServer/toolCall:incomplete-claim".to_owned()));
         };
@@ -769,11 +777,11 @@ fn codex_version(binary: &Path) -> Result<Version> {
 }
 
 fn hosted_instructions() -> &'static str {
-    "You are operating inside gBox. Use the company_data MCP server for company metrics. Cite the company, metric, period, value, and unit in factual conclusions. The workspace is read-only. Use gbox_send_test_webhook only when the user explicitly asks to deliver a report."
+    "You are operating inside gBox. Check factual conclusions with the most relevant available read-only evidence tool. Preserve the subject, predicate, value, unit, time, and location when applicable. The workspace is read-only. Use gbox_send_test_webhook only when the user explicitly asks to deliver a report."
 }
 
 fn extractor_instructions() -> &'static str {
-    "You are gBox's isolated claim extractor. Do not verify claims and do not use tools. Extract independently checkable company facts. Preserve an exact source span. Use claim_type company_metric when a company, metric, period, value, and unit are present; otherwise use other_factual and leave unknown fields null. Return only JSON matching the supplied schema."
+    "You are gBox's isolated claim extractor. Do not verify claims and do not use tools. Extract arbitrary independently checkable factual assertions, not opinions, requests, predictions, or instructions. Normalize each assertion into subject, predicate, object, asserted value, unit, temporal context, and location when present. Leave unknown fields null and preserve an exact source span. Return only JSON matching the supplied schema."
 }
 
 fn extraction_schema() -> Value {
@@ -788,15 +796,17 @@ fn extraction_schema() -> Value {
                 "items": {
                     "type": "object",
                     "additionalProperties": false,
-                    "required": ["statement", "claimType", "companyId", "metric", "period", "assertedValue", "unit", "sourceSpan"],
+                    "required": ["statement", "claimType", "subject", "predicate", "object", "assertedValue", "unit", "temporalContext", "location", "sourceSpan"],
                     "properties": {
                         "statement": {"type": "string"},
-                        "claimType": {"type": "string", "enum": ["company_metric", "other_factual"]},
-                        "companyId": {"type": ["string", "null"]},
-                        "metric": {"type": ["string", "null"]},
-                        "period": {"type": ["string", "null"]},
+                        "claimType": {"type": "string", "enum": ["quantity", "event", "attribution", "status", "relationship", "other_factual"]},
+                        "subject": {"type": ["string", "null"]},
+                        "predicate": {"type": ["string", "null"]},
+                        "object": {"type": ["string", "null"]},
                         "assertedValue": {"type": ["string", "null"]},
                         "unit": {"type": ["string", "null"]},
+                        "temporalContext": {"type": ["string", "null"]},
+                        "location": {"type": ["string", "null"]},
                         "sourceSpan": {"type": "string"}
                     }
                 }
@@ -809,11 +819,13 @@ fn fallback_candidate(text: &str) -> ClaimCandidate {
     ClaimCandidate {
         statement: text.chars().take(500).collect(),
         claim_type: "other_factual".to_owned(),
-        company_id: None,
-        metric: None,
-        period: None,
+        subject: None,
+        predicate: None,
+        object: None,
         asserted_value: None,
         unit: None,
+        temporal_context: None,
+        location: None,
         source_span: text.chars().take(240).collect(),
     }
 }
