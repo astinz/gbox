@@ -1,0 +1,20 @@
+{
+  "name": "gbox-local",
+  "interface": {
+    "displayName": "gBox Local"
+  },
+  "plugins": [
+    {
+      "name": "gbox-control",
+      "source": {
+        "source": "local",
+        "path": "./plugins/gbox-control"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

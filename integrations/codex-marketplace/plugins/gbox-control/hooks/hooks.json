@@ -1,0 +1,43 @@
+{
+  "description": "Fail-closed approval and observation hooks for the gBox protected webhook.",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "gbox_send_test_webhook$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$PLUGIN_ROOT/hooks/dispatcher.mjs\" pre-tool-use",
+            "timeout": 310,
+            "statusMessage": "Waiting for gBox approval"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "gbox_send_test_webhook$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$PLUGIN_ROOT/hooks/dispatcher.mjs\" post-tool-use",
+            "timeout": 20,
+            "statusMessage": "Recording gBox execution result"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$PLUGIN_ROOT/hooks/dispatcher.mjs\" stop",
+            "timeout": 20,
+            "statusMessage": "Forwarding the final message to gBox when consented"
+          }
+        ]
+      }
+    ]
+  }
+}

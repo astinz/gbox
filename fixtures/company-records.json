@@ -1,0 +1,46 @@
+[
+  {
+    "recordId": "acme-prod-db-users-2026-q2",
+    "companyId": "acme",
+    "metric": "production_database_users",
+    "period": "2026-Q2",
+    "value": "17",
+    "unit": "count",
+    "asOf": "2026-06-30T23:59:59Z",
+    "sourceSystem": "identity-governance",
+    "version": "1"
+  },
+  {
+    "recordId": "acme-revenue-2026-q2",
+    "companyId": "acme",
+    "metric": "revenue",
+    "period": "2026-Q2",
+    "value": "12400000.00",
+    "unit": "USD",
+    "asOf": "2026-06-30T23:59:59Z",
+    "sourceSystem": "finance-warehouse",
+    "version": "3"
+  },
+  {
+    "recordId": "acme-active-customers-2026-q2",
+    "companyId": "acme",
+    "metric": "active_customers",
+    "period": "2026-Q2",
+    "value": "4812",
+    "unit": "count",
+    "asOf": "2026-06-30T23:59:59Z",
+    "sourceSystem": "customer-data-platform",
+    "version": "2"
+  },
+  {
+    "recordId": "northstar-prod-db-users-2026-q2",
+    "companyId": "northstar",
+    "metric": "production_database_users",
+    "period": "2026-Q2",
+    "value": "9",
+    "unit": "count",
+    "asOf": "2026-06-30T23:59:59Z",
+    "sourceSystem": "identity-governance",
+    "version": "1"
+  }
+]

@@ -1,29 +1,72 @@
-import { MoonIcon } from "lucide-react";
+import { getCurrentWindow } from "@tauri-apps/api/window";
+import { CircleAlertIcon, ShieldCheckIcon } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { ActionHistory } from "@/components/action-history";
+import { ApprovalPanel } from "@/components/approval-panel";
+import { ClaimLedger } from "@/components/claim-ledger";
+import { EventTimeline } from "@/components/event-timeline";
+import { StatusBoard } from "@/components/status-board";
+import { TaskComposer } from "@/components/task-composer";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useGbox } from "@/hooks/use-gbox";
 
 function App() {
+  if (getCurrentWindow().label === "approval") return <ApprovalPanel />;
+  return <Dashboard />;
+}
+
+function Dashboard() {
+  const gbox = useGbox();
+
   return (
-    <main className="flex min-h-svh items-center justify-center bg-background p-6 text-foreground">
-      <section className="flex w-full max-w-lg flex-col items-start gap-6">
-        <div className="flex flex-col gap-3">
-          <p className="text-sm font-medium text-muted-foreground">Gbox</p>
-          <h1 className="text-4xl font-semibold tracking-tight">
-            Your workspace is ready.
-          </h1>
-          <p className="max-w-md text-base leading-relaxed text-muted-foreground">
-            Tauri, React, and shadcn/ui are configured as a clean foundation for
-            the application.
-          </p>
+    <main className="app-shell">
+      <header className="app-header">
+        <div className="brand-lockup">
+          <span className="brand-mark"><ShieldCheckIcon /></span>
+          <div><span className="brand-name">gBox</span><span className="brand-subtitle">evidence & control layer</span></div>
         </div>
-        <Button
-          variant="outline"
-          onClick={() => document.documentElement.classList.toggle("dark")}
-        >
-          <MoonIcon data-icon="inline-start" />
-          Toggle theme
-        </Button>
+        <div className="flex items-center gap-2">
+          <Badge variant={gbox.snapshot.status.receiptChainValid ? "outline" : "destructive"}>
+            Chain {gbox.snapshot.status.receiptChainValid ? "verified" : "broken"}
+          </Badge>
+          <Badge variant="secondary">macOS local</Badge>
+        </div>
+      </header>
+
+      {gbox.error && (
+        <Alert variant="destructive" className="mb-4">
+          <CircleAlertIcon />
+          <AlertTitle>gBox could not complete the request</AlertTitle>
+          <AlertDescription>{gbox.error}</AlertDescription>
+        </Alert>
+      )}
+
+      <section className="top-grid">
+        <TaskComposer
+          busy={gbox.busy}
+          sessionId={gbox.sessionId}
+          onStartLive={(cwd, prompt) => void gbox.startLive(cwd, prompt)}
+          onContinue={(prompt) => void gbox.sendPrompt(prompt)}
+          onReplay={() => void gbox.startReplay()}
+        />
+        <StatusBoard
+          status={gbox.snapshot.status}
+          onObservationChange={(enabled) => void gbox.setGlobalObservation(enabled)}
+        />
       </section>
+
+      <Tabs defaultValue="claims" className="mt-4">
+        <TabsList variant="line" className="mb-3">
+          <TabsTrigger value="claims">Claims <span className="tab-count">{gbox.snapshot.claims.length}</span></TabsTrigger>
+          <TabsTrigger value="events">App Server <span className="tab-count">{gbox.snapshot.events.length}</span></TabsTrigger>
+          <TabsTrigger value="actions">Actions & receipts <span className="tab-count">{gbox.snapshot.actions.length}</span></TabsTrigger>
+        </TabsList>
+        <TabsContent value="claims"><ClaimLedger claims={gbox.snapshot.claims} evidence={gbox.snapshot.evidence} /></TabsContent>
+        <TabsContent value="events"><EventTimeline events={gbox.snapshot.events} /></TabsContent>
+        <TabsContent value="actions"><ActionHistory actions={gbox.snapshot.actions} receipts={gbox.snapshot.receipts} /></TabsContent>
+      </Tabs>
     </main>
   );
 }

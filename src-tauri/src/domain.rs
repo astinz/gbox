@@ -1,0 +1,254 @@
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "PascalCase")]
+pub enum ClaimState {
+    Verified,
+    Contradicted,
+    Unverifiable,
+}
+
+impl ClaimState {
+    pub fn as_db(&self) -> &'static str {
+        match self {
+            Self::Verified => "Verified",
+            Self::Contradicted => "Contradicted",
+            Self::Unverifiable => "Unverifiable",
+        }
+    }
+}
+
+impl TryFrom<&str> for ClaimState {
+    type Error = String;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        match value {
+            "Verified" => Ok(Self::Verified),
+            "Contradicted" => Ok(Self::Contradicted),
+            "Unverifiable" => Ok(Self::Unverifiable),
+            other => Err(format!("unknown claim state: {other}")),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "PascalCase")]
+pub enum ActionState {
+    Pending,
+    Approved,
+    Denied,
+    Executed,
+    Failed,
+    Expired,
+}
+
+impl ActionState {
+    pub fn as_db(&self) -> &'static str {
+        match self {
+            Self::Pending => "Pending",
+            Self::Approved => "Approved",
+            Self::Denied => "Denied",
+            Self::Executed => "Executed",
+            Self::Failed => "Failed",
+            Self::Expired => "Expired",
+        }
+    }
+}
+
+impl TryFrom<&str> for ActionState {
+    type Error = String;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        match value {
+            "Pending" => Ok(Self::Pending),
+            "Approved" => Ok(Self::Approved),
+            "Denied" => Ok(Self::Denied),
+            "Executed" => Ok(Self::Executed),
+            "Failed" => Ok(Self::Failed),
+            "Expired" => Ok(Self::Expired),
+            other => Err(format!("unknown action state: {other}")),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ClaimCandidate {
+    pub statement: String,
+    pub claim_type: String,
+    pub company_id: Option<String>,
+    pub metric: Option<String>,
+    pub period: Option<String>,
+    pub asserted_value: Option<String>,
+    pub unit: Option<String>,
+    pub source_span: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Claim {
+    pub id: String,
+    pub session_id: String,
+    pub turn_id: Option<String>,
+    pub statement: String,
+    pub claim_type: String,
+    pub company_id: Option<String>,
+    pub metric: Option<String>,
+    pub period: Option<String>,
+    pub asserted_value: Option<String>,
+    pub unit: Option<String>,
+    pub source_span: String,
+    pub state: ClaimState,
+    pub confidence: f64,
+    pub created_at: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CompanyMetricRecord {
+    #[serde(alias = "record_id")]
+    pub record_id: String,
+    #[serde(alias = "company_id")]
+    pub company_id: String,
+    pub metric: String,
+    pub period: String,
+    pub value: String,
+    pub unit: String,
+    #[serde(alias = "as_of")]
+    pub as_of: String,
+    #[serde(alias = "source_system")]
+    pub source_system: String,
+    pub version: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Evidence {
+    pub id: String,
+    pub claim_id: String,
+    pub source_kind: String,
+    pub source_reference: String,
+    pub record: Option<CompanyMetricRecord>,
+    pub result_hash: String,
+    pub explanation: String,
+    pub created_at: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PendingAction {
+    pub id: String,
+    pub session_id: String,
+    pub turn_id: Option<String>,
+    pub tool_use_id: Option<String>,
+    pub action_type: String,
+    pub report_markdown: String,
+    pub payload_hash: String,
+    pub state: ActionState,
+    pub claim_ids: Vec<String>,
+    pub requested_at: String,
+    pub decided_at: Option<String>,
+    pub executed_at: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Decision {
+    pub id: String,
+    pub action_id: String,
+    pub decision: String,
+    pub reason: Option<String>,
+    pub decided_by: String,
+    pub decided_at: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Receipt {
+    pub id: String,
+    pub sequence: i64,
+    pub event_type: String,
+    pub entity_id: String,
+    pub payload: Value,
+    pub previous_hash: String,
+    pub hash: String,
+    pub created_at: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CodexEvent {
+    pub id: String,
+    pub session_id: Option<String>,
+    pub method: String,
+    pub summary: String,
+    pub payload: Value,
+    pub source: String,
+    pub created_at: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct SystemStatus {
+    pub codex_found: bool,
+    pub codex_path: Option<String>,
+    pub codex_version: Option<String>,
+    pub codex_supported: bool,
+    pub app_server_connected: bool,
+    pub plugin_installed: bool,
+    pub hooks_trusted: bool,
+    pub company_mcp_ready: bool,
+    pub global_observation: bool,
+    pub receipt_chain_valid: bool,
+    pub replay_mode: bool,
+    pub diagnostic: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct DashboardSnapshot {
+    pub status: SystemStatus,
+    pub claims: Vec<Claim>,
+    pub evidence: Vec<Evidence>,
+    pub actions: Vec<PendingAction>,
+    pub decisions: Vec<Decision>,
+    pub receipts: Vec<Receipt>,
+    pub events: Vec<CodexEvent>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ResolveActionInput {
+    pub action_id: String,
+    pub decision: String,
+    pub reason: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ResolveActionResult {
+    pub action: PendingAction,
+    pub approval_token: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct StartLiveSessionInput {
+    pub cwd: String,
+    pub prompt: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LiveSessionResult {
+    pub session_id: String,
+    pub turn_id: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SendLivePromptInput {
+    pub session_id: String,
+    pub prompt: String,
+}

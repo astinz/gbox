@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "company_data": {
+      "command": "node",
+      "args": ["./mcp/dist/index.mjs"],
+      "cwd": ".",
+      "tool_timeout_sec": 360,
+      "default_tools_approval_mode": "auto"
+    }
+  }
+}

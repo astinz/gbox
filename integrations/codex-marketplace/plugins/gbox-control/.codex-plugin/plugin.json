@@ -1,0 +1,23 @@
+{
+  "name": "gbox-control",
+  "version": "0.1.0+codex.20260719182013",
+  "description": "A local evidence and human-approval boundary for the gBox test webhook.",
+  "author": {
+    "name": "gBox"
+  },
+  "interface": {
+    "displayName": "gBox Control",
+    "shortDescription": "Verify company claims and gate a protected local webhook.",
+    "longDescription": "gBox Control bundles synthetic company evidence, a protected loopback webhook, and trusted lifecycle hooks that require an explicit human decision before delivery.",
+    "developerName": "gBox",
+    "category": "Productivity",
+    "capabilities": [
+      "Read",
+      "Write"
+    ],
+    "defaultPrompt": [
+      "Check Acme's production database users for 2026-Q2, then prepare the result for the protected gBox test webhook."
+    ]
+  },
+  "mcpServers": "./.mcp.json"
+}
