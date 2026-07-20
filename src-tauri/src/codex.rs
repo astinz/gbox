@@ -822,6 +822,12 @@ mod tests {
             schema["properties"]["claims"]["items"]["additionalProperties"],
             Value::Bool(false)
         );
+        assert!(schema["properties"]["claims"]["items"]["properties"]
+            .get("subject")
+            .is_some());
+        assert!(schema["properties"]["claims"]["items"]["properties"]
+            .get("companyId")
+            .is_none());
     }
 
     #[test]

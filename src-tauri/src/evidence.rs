@@ -465,6 +465,15 @@ mod tests {
         assert!(sources_from_status(&status, &settings)
             .iter()
             .all(|source| source.server.as_deref() != Some("inherited")));
+        let config = thread_config(&settings, &["inherited".to_owned()], false);
+        assert_eq!(
+            config["mcp_servers"]["inherited"]["enabled"],
+            Value::Bool(false)
+        );
+        assert_eq!(
+            config["mcp_servers"]["custom"]["command"],
+            Value::String("custom-mcp".to_owned())
+        );
     }
 
     #[test]
