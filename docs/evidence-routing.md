@@ -67,7 +67,7 @@ Secret values are intentionally not a supported field. Settings are persisted in
 
 The bundled company adapter parses decimal strings with `rust_decimal`, checks subject, metric, period, and canonical unit, and never uses floating-point equality. This is deterministic.
 
-Generic MCP and web evidence can have arbitrary schemas. Their verdicts are model-assisted and therefore probabilistic. gBox preserves the tool result, selection rationale, source reference, explanation, confidence, and SHA-256 result hash so a person can audit the decision. Future production integrations should add deterministic adapters for each authoritative domain contract.
+Generic MCP and web evidence can have arbitrary schemas. Their verdicts are model-assisted and therefore probabili stic. gBox preserves the tool result, selection rationale, source reference, explanation, confidence, and SHA-256 result hash so a person can audit the decision. Future production integrations should add deterministic adapters for each authoritative domain contract.
 
 ## Action boundary
 
