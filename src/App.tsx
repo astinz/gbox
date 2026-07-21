@@ -7,9 +7,11 @@ import { DashboardScreen } from "@/components/dashboard-screen";
 import { SettingsScreen } from "@/components/settings-screen";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useGbox } from "@/hooks/use-gbox";
+import { useTheme } from "@/hooks/use-theme";
 
 function App() {
   const gbox = useGbox();
+  const { theme, setTheme } = useTheme();
   const [screen, setScreen] = useState<AppScreen>("dashboard");
   const pendingAction = gbox.snapshot.actions.find((action) => action.state === "Pending");
 
@@ -19,7 +21,12 @@ function App() {
 
   return (
     <main className="app-shell">
-      <AppHeader screen={screen} onNavigate={setScreen} />
+      <AppHeader
+        screen={screen}
+        theme={theme}
+        onNavigate={setScreen}
+        onThemeChange={setTheme}
+      />
 
       {gbox.error ? (
         <Alert variant="destructive" className="mb-4">

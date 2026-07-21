@@ -1,3 +1,4 @@
+import { GboxOrb } from "@/components/gbox-orb";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -8,14 +9,15 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Spinner } from "@/components/ui/spinner";
 import type { LiveActivityModel } from "@/lib/live-activity";
+import { orbForActivity } from "@/lib/orb-state";
 import { cn } from "@/lib/utils";
 
 export function LiveActivity({ activity }: { activity: LiveActivityModel }) {
   if (!activity.visible) return null;
 
   const working = activity.phase === "working";
+  const orb = orbForActivity(activity);
   const history = activity.items.filter(
     (item) => item.label !== activity.headline || item.detail !== activity.detail,
   );
@@ -33,7 +35,7 @@ export function LiveActivity({ activity }: { activity: LiveActivityModel }) {
         <CardDescription>What gBox can safely show while your request is running.</CardDescription>
         <CardAction>
           <Badge variant={activity.phase === "failed" ? "destructive" : working ? "secondary" : "outline"}>
-            {working ? <Spinner /> : null}
+            {working ? <GboxOrb {...orb} /> : null}
             {activity.phase === "failed" ? "Needs attention" : working ? "Working" : "Complete"}
           </Badge>
         </CardAction>

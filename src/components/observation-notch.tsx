@@ -1,3 +1,4 @@
+import { GboxOrb } from "@/components/gbox-orb";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -6,6 +7,7 @@ import {
   verdictSummary,
   type NotchPhase,
 } from "@/lib/notch-presentation";
+import { orbForNotch } from "@/lib/orb-state";
 import type { Observation } from "@/types/gbox";
 
 type Props = {
@@ -31,6 +33,8 @@ export function ObservationNotch({
     ? phaseLabel("completed", observation)
     : label;
   const excerpt = observation?.messageExcerpt ?? "Waiting for completed research";
+  const orb = orbForNotch(phase);
+  const active = phase === "captured" || phase === "checking";
 
   return (
     <section
@@ -47,7 +51,7 @@ export function ObservationNotch({
             <span className="observation-notch__brand">gBox</span>
             <span aria-hidden="true" />
             <span className="observation-notch__state">
-              <i aria-hidden="true" />
+              <GboxOrb {...orb} theme="dark" />
               {label}
             </span>
           </header>
@@ -71,7 +75,13 @@ export function ObservationNotch({
         </>
       ) : (
         <button className="observation-notch__compact" type="button" onClick={onReview}>
-          <span aria-hidden="true" />
+          {active ? (
+            <span className="observation-notch__compact-orb">
+              <GboxOrb {...orb} theme="dark" />
+            </span>
+          ) : (
+            <span className="observation-notch__compact-mark" aria-hidden="true" />
+          )}
           <span className="sr-only">
             {queueDepth > 0 ? `${queueDepth} checks waiting; open gBox` : "Open gBox"}
           </span>

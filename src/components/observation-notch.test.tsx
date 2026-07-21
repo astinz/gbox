@@ -33,6 +33,20 @@ describe("ObservationNotch", () => {
     expect(screen.getByText("Research received")).toBeInTheDocument();
     expect(screen.getAllByText("Contradicted")).toHaveLength(2);
     expect(screen.getByText(contradicted.messageExcerpt)).toBeInTheDocument();
+    expect(document.querySelector('[data-orb-state="solving"]')).toHaveAttribute("data-paused", "true");
+  });
+
+  it("shows a compact shaping signal when new research is captured", () => {
+    render(
+      <ObservationNotch
+        phase="captured"
+        expanded={false}
+        queueDepth={1}
+        onReview={vi.fn()}
+      />,
+    );
+
+    expect(document.querySelector('[data-orb-state="shaping"]')).toHaveAttribute("data-paused", "false");
   });
 
   it("opens gBox from the compact notch", () => {

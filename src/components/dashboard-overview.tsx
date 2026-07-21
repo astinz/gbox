@@ -1,8 +1,10 @@
+import { GboxOrb } from "@/components/gbox-orb";
 import { VerdictBadge } from "@/components/claim-ledger";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
+import { orbForDashboard } from "@/lib/orb-state";
 import type { Claim, DashboardSnapshot, Observation } from "@/types/gbox";
 
 export type DashboardDetail = "claims" | "actions" | "tools";
@@ -22,15 +24,21 @@ export function DashboardOverview({
 }: Props) {
   const recent = snapshot.recentObservations.slice(0, 5);
   const posture = observationPosture(snapshot);
+  const orb = orbForDashboard(snapshot);
 
   return (
     <section className="dashboard-overview" aria-label="Research review overview">
       <Card className="observation-card">
         <CardHeader className="observation-card__header">
-          <div>
-            <p className="eyebrow">Research monitoring</p>
-            <h2 className="observation-status">{posture.label}</h2>
-            <p className="observation-status__detail">{posture.detail}</p>
+          <div className="observation-card__identity">
+            <span className="observation-card__orb">
+              <GboxOrb {...orb} size={64} />
+            </span>
+            <div>
+              <p className="eyebrow">Research monitoring</p>
+              <h2 className="observation-status">{posture.label}</h2>
+              <p className="observation-status__detail">{posture.detail}</p>
+            </div>
           </div>
           <div className="queue-count" aria-label={`${snapshot.observationQueueDepth} checks waiting`}>
             <strong>{snapshot.observationQueueDepth}</strong>

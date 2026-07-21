@@ -1,15 +1,19 @@
 import { LayoutDashboardIcon, Settings2Icon, ShieldCheckIcon } from "lucide-react";
 
+import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
+import type { Theme } from "@/lib/theme";
 
 export type AppScreen = "dashboard" | "settings";
 
 type Props = {
   screen: AppScreen;
+  theme: Theme;
   onNavigate: (screen: AppScreen) => void;
+  onThemeChange: (theme: Theme) => void;
 };
 
-export function AppHeader({ screen, onNavigate }: Props) {
+export function AppHeader({ screen, theme, onNavigate, onThemeChange }: Props) {
   return (
     <header className="app-header">
       <div className="brand-lockup">
@@ -37,6 +41,7 @@ export function AppHeader({ screen, onNavigate }: Props) {
             <Settings2Icon data-icon="inline-start" /> Settings
           </Button>
         </nav>
+        <ThemeToggle theme={theme} onThemeChange={onThemeChange} />
       </div>
     </header>
   );

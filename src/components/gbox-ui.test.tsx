@@ -200,6 +200,7 @@ describe("gBox interface", () => {
     );
 
     expect(screen.getByRole("heading", { name: "Needs attention" })).toBeInTheDocument();
+    expect(document.querySelector('[data-orb-state="solving"]')).toHaveAttribute("data-paused", "true");
     fireEvent.click(screen.getByRole("button", { name: /Contradicted test claim/ }));
     expect(openClaim).toHaveBeenCalledWith(selected);
   });
@@ -292,6 +293,7 @@ describe("gBox interface", () => {
     expect(screen.getByRole("region", { name: "Research progress" })).toHaveAttribute("aria-busy", "true");
     expect(screen.getByText("Connecting to Codex")).toBeInTheDocument();
     expect(screen.getByText(/Private reasoning is never displayed/)).toBeInTheDocument();
+    expect(document.querySelector('[data-orb-state="listening"]')).toHaveAttribute("data-paused", "false");
   });
 
   it("saves existing and additional evidence sources", () => {
@@ -338,9 +340,19 @@ describe("gBox interface", () => {
 
   it("navigates between the dashboard and settings screens", () => {
     const navigate = vi.fn();
-    render(<AppHeader screen="dashboard" onNavigate={navigate} />);
+    const changeTheme = vi.fn();
+    render(
+      <AppHeader
+        screen="dashboard"
+        theme="light"
+        onNavigate={navigate}
+        onThemeChange={changeTheme}
+      />,
+    );
     fireEvent.click(screen.getByRole("button", { name: "Settings" }));
     expect(navigate).toHaveBeenCalledWith("settings");
+    fireEvent.click(screen.getByRole("button", { name: "Switch to dark mode" }));
+    expect(changeTheme).toHaveBeenCalledWith("dark");
   });
 
   it("shows risk and resolves the real pending approval", () => {
