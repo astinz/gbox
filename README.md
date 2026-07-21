@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <a href="https://youtu.be/8Cy0IhPu_m4">Watch the 2:33 demo</a> ·
+  <a href="https://youtu.be/lU8xrWULxcM">Watch the demo</a> ·
   <a href="https://github.com/astinz/gbox/releases/download/v0.1.0/gbox-v0.1.0-macos-arm64.zip">Download for macOS</a> ·
   <a href="#judge-fast-path">Judge fast path</a> ·
   <a href="#how-it-works">How it works</a> ·
@@ -39,7 +39,7 @@ When a claim leads to the bundled protected webhook, gBox requires an explicit h
 
 ## Demo
 
-[![Watch the gBox demo](https://img.youtube.com/vi/8Cy0IhPu_m4/maxresdefault.jpg)](https://youtu.be/8Cy0IhPu_m4)
+[![Watch the gBox demo](https://img.youtube.com/vi/lU8xrWULxcM/maxresdefault.jpg)](https://youtu.be/lU8xrWULxcM)
 
 The demo shows an ordinary Codex task making a false company claim, gBox checking it in the background, the macOS notch reporting the contradiction, the full evidence dossier, a correction handoff, and a protected action held for approval.
 
