@@ -32,6 +32,12 @@ export const gboxApi = {
     invoke<SystemStatus>("set_global_observation", { enabled }),
   setLaunchAtLogin: (enabled: boolean) =>
     invoke<SystemStatus>("set_launch_at_login", { enabled }),
+  setNotchEnabled: (enabled: boolean) =>
+    invoke<SystemStatus>("set_notch_enabled", { enabled }),
+  setNotchPresentation: (expanded: boolean) =>
+    invoke<void>("set_notch_presentation", { expanded }),
+  openMainWindow: (observationId?: string, primaryClaimId?: string) =>
+    invoke<void>("open_main_window", { observationId, primaryClaimId }),
   setNotificationsAvailable: (available: boolean) =>
     invoke<SystemStatus>("set_notifications_available", { available }),
   markObservationNotified: (observationId: string, notificationState: NotificationState) =>

@@ -399,6 +399,8 @@ pub struct SystemStatus {
     pub observation_queue_depth: usize,
     pub notifications_available: bool,
     pub launch_at_login: bool,
+    pub notch_available: bool,
+    pub notch_enabled: bool,
     pub receipt_chain_valid: bool,
     pub replay_mode: bool,
     pub diagnostic: Option<String>,

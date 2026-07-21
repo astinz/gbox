@@ -12,8 +12,20 @@ const windowMocks = vi.hoisted(() => ({
   unminimize: vi.fn(),
   setFocus: vi.fn(),
 }));
+const eventMocks = vi.hoisted(() => ({
+  handler: undefined as
+    | ((event: { payload: Record<string, unknown> }) => void)
+    | undefined,
+  unlisten: vi.fn(),
+}));
 
 vi.mock("@tauri-apps/api/core", () => ({ isTauri: () => true }));
+vi.mock("@tauri-apps/api/event", () => ({
+  listen: vi.fn(async (_event, handler) => {
+    eventMocks.handler = handler;
+    return eventMocks.unlisten;
+  }),
+}));
 vi.mock("@tauri-apps/api/window", () => ({ getCurrentWindow: () => windowMocks }));
 vi.mock("@tauri-apps/plugin-notification", () => notificationMocks);
 
@@ -32,6 +44,7 @@ describe("observation notifications", () => {
     notificationMocks.isPermissionGranted.mockResolvedValue(false);
     notificationMocks.requestPermission.mockResolvedValue("granted");
     notificationMocks.registerActionTypes.mockResolvedValue(undefined);
+    eventMocks.handler = undefined;
     windowMocks.show.mockResolvedValue(undefined);
     windowMocks.unminimize.mockResolvedValue(undefined);
     windowMocks.setFocus.mockResolvedValue(undefined);
@@ -78,6 +91,21 @@ describe("observation notifications", () => {
     expect(onTarget).toHaveBeenCalledWith({
       observationId: "observation-1",
       primaryClaimId: "claim-1",
+    });
+  });
+
+  it("routes a notch review through the same claim target callback", async () => {
+    notificationMocks.onAction.mockResolvedValue({ unregister: vi.fn() });
+    const onTarget = vi.fn();
+    await listenForNotificationTargets(onTarget);
+
+    eventMocks.handler?.({
+      payload: { observationId: "observation-2", primaryClaimId: "claim-2" },
+    });
+
+    expect(onTarget).toHaveBeenCalledWith({
+      observationId: "observation-2",
+      primaryClaimId: "claim-2",
     });
   });
 });

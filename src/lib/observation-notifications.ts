@@ -1,5 +1,6 @@
 import { isTauri } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { listen } from "@tauri-apps/api/event";
 import {
   isPermissionGranted,
   onAction,
@@ -55,7 +56,13 @@ export async function listenForNotificationTargets(
     void focusMainWindow();
     onTarget(target);
   });
-  return () => void listener.unregister();
+  const unlistenClaim = await listen<NotificationTarget>("gbox://open-claim", (event) => {
+    onTarget(event.payload);
+  });
+  return () => {
+    void listener.unregister();
+    unlistenClaim();
+  };
 }
 
 export function sendObservationNotification(observation: Observation): void {

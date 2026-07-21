@@ -9,7 +9,7 @@ use crate::{
         ResolveActionResult, SendLivePromptInput, StartLiveSessionInput, SystemStatus,
         UpdateEvidenceSettingsInput,
     },
-    replay,
+    notch, replay,
     state::ApplicationState,
 };
 
@@ -47,8 +47,50 @@ pub fn set_global_observation(
     let status = state
         .set_global_observation(enabled)
         .map_err(|error| error.to_string())?;
+    notch::set_visible(&app, enabled && status.notch_enabled).map_err(|error| error.to_string())?;
     let _ = app.emit("gbox://system-status", &status);
     Ok(status)
+}
+
+#[tauri::command]
+pub fn set_notch_enabled(
+    app: AppHandle,
+    state: State<'_, Arc<ApplicationState>>,
+    enabled: bool,
+) -> CommandResult<SystemStatus> {
+    let status = state
+        .set_notch_enabled(enabled)
+        .map_err(|error| error.to_string())?;
+    notch::set_visible(&app, enabled && status.global_observation)
+        .map_err(|error| error.to_string())?;
+    let _ = app.emit("gbox://system-status", &status);
+    Ok(status)
+}
+
+#[tauri::command]
+pub fn set_notch_presentation(app: AppHandle, expanded: bool) -> CommandResult<()> {
+    notch::set_presentation(&app, expanded).map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+pub fn open_main_window(
+    app: AppHandle,
+    observation_id: Option<String>,
+    primary_claim_id: Option<String>,
+) -> CommandResult<()> {
+    crate::show_main_window(&app);
+    if let (Some(observation_id), Some(primary_claim_id)) = (observation_id, primary_claim_id) {
+        app.emit_to(
+            "main",
+            "gbox://open-claim",
+            crate::domain::NotificationTarget {
+                observation_id,
+                primary_claim_id,
+            },
+        )
+        .map_err(|error| error.to_string())?;
+    }
+    Ok(())
 }
 
 #[tauri::command]

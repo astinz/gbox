@@ -7,6 +7,7 @@ type Props = {
   busy: boolean;
   onObservationChange: (enabled: boolean) => void;
   onLaunchAtLoginChange: (enabled: boolean) => void;
+  onNotchChange: (enabled: boolean) => void;
   onSaveEvidence: (settings: EvidenceSettings) => void;
 };
 
@@ -15,6 +16,7 @@ export function SettingsScreen({
   busy,
   onObservationChange,
   onLaunchAtLoginChange,
+  onNotchChange,
   onSaveEvidence,
 }: Props) {
   return (
@@ -31,6 +33,7 @@ export function SettingsScreen({
           status={snapshot.status}
           onObservationChange={onObservationChange}
           onLaunchAtLoginChange={onLaunchAtLoginChange}
+          onNotchChange={onNotchChange}
         />
         <EvidenceSettingsPanel
           settings={snapshot.evidenceSettings}

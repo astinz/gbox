@@ -165,6 +165,8 @@ export type SystemStatus = {
   observationQueueDepth: number;
   notificationsAvailable: boolean;
   launchAtLogin: boolean;
+  notchAvailable: boolean;
+  notchEnabled: boolean;
   receiptChainValid: boolean;
   replayMode: boolean;
   diagnostic?: string;
@@ -236,6 +238,8 @@ export const emptySnapshot: DashboardSnapshot = {
     observationQueueDepth: 0,
     notificationsAvailable: false,
     launchAtLogin: false,
+    notchAvailable: false,
+    notchEnabled: false,
     receiptChainValid: true,
     replayMode: false,
   },

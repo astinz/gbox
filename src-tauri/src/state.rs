@@ -22,6 +22,7 @@ pub struct ApplicationState {
     global_observation: AtomicBool,
     notifications_available: AtomicBool,
     launch_at_login: AtomicBool,
+    notch_enabled: AtomicBool,
 }
 
 impl ApplicationState {
@@ -37,6 +38,11 @@ impl ApplicationState {
             .ok()
             .flatten()
             .is_some_and(|value| value == "true");
+        let notch_enabled = store
+            .get_setting("notch_enabled")
+            .ok()
+            .flatten()
+            .map_or(cfg!(target_os = "macos"), |value| value == "true");
         Arc::new(Self {
             store,
             codex,
@@ -46,6 +52,7 @@ impl ApplicationState {
             global_observation: AtomicBool::new(global_observation),
             notifications_available: AtomicBool::new(false),
             launch_at_login: AtomicBool::new(launch_at_login),
+            notch_enabled: AtomicBool::new(notch_enabled),
         })
     }
 
@@ -56,6 +63,8 @@ impl ApplicationState {
         status.observation_queue_depth = self.store.observation_queue_depth().unwrap_or(0);
         status.notifications_available = self.notifications_available.load(Ordering::Relaxed);
         status.launch_at_login = self.launch_at_login.load(Ordering::Relaxed);
+        status.notch_available = cfg!(target_os = "macos");
+        status.notch_enabled = self.notch_enabled.load(Ordering::Relaxed);
         status.replay_mode = self.replay_mode.load(Ordering::Relaxed);
         status.receipt_chain_valid = self.store.verify_receipt_chain().unwrap_or(false);
         status
@@ -108,6 +117,17 @@ impl ApplicationState {
             .ok()
             .flatten()
             .is_some_and(|value| value == "true")
+    }
+
+    pub fn set_notch_enabled(&self, enabled: bool) -> Result<SystemStatus> {
+        self.notch_enabled.store(enabled, Ordering::Relaxed);
+        self.store
+            .set_setting("notch_enabled", if enabled { "true" } else { "false" })?;
+        Ok(self.status())
+    }
+
+    pub fn notch_enabled(&self) -> bool {
+        self.notch_enabled.load(Ordering::Relaxed)
     }
 
     pub fn set_replay_mode(&self, enabled: bool) {

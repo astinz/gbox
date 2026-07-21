@@ -98,6 +98,8 @@ export function useGbox() {
       },
       setLaunchAtLogin: (enabled: boolean) =>
         run(() => gboxApi.setLaunchAtLogin(enabled)),
+      setNotchEnabled: (enabled: boolean) =>
+        run(() => gboxApi.setNotchEnabled(enabled)),
       retryObservation: (observationId: string) =>
         run(() => gboxApi.retryObservation(observationId)),
       updateEvidenceSettings: (settings: EvidenceSettings) =>

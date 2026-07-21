@@ -18,9 +18,15 @@ type Props = {
   status: SystemStatus;
   onObservationChange: (enabled: boolean) => void;
   onLaunchAtLoginChange: (enabled: boolean) => void;
+  onNotchChange: (enabled: boolean) => void;
 };
 
-export function StatusBoard({ status, onObservationChange, onLaunchAtLoginChange }: Props) {
+export function StatusBoard({
+  status,
+  onObservationChange,
+  onLaunchAtLoginChange,
+  onNotchChange,
+}: Props) {
   const checks = [
     { label: "Codex CLI", value: status.codexSupported, icon: BinaryIcon, detail: status.codexVersion ?? "not found" },
     { label: "App Server", value: status.appServerConnected, icon: CableIcon, detail: status.appServerConnected ? "JSONL connected" : "starts on first live task" },
@@ -70,6 +76,21 @@ export function StatusBoard({ status, onObservationChange, onLaunchAtLoginChange
             onCheckedChange={onObservationChange}
           />
         </Field>
+        {status.notchAvailable ? (
+          <Field orientation="horizontal" className="consent-field">
+            <FieldContent>
+              <FieldTitle>Observation notch</FieldTitle>
+              <FieldDescription>
+                Shows capture, verification progress, and verdicts at the top of the macOS display.
+              </FieldDescription>
+            </FieldContent>
+            <Switch
+              aria-label="Observation notch"
+              checked={status.notchEnabled}
+              onCheckedChange={onNotchChange}
+            />
+          </Field>
+        ) : null}
         <Field orientation="horizontal" className="consent-field">
           <FieldContent>
             <FieldTitle>Launch gBox at login</FieldTitle>

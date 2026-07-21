@@ -4,6 +4,7 @@ mod control;
 mod domain;
 mod evidence;
 mod gate;
+mod notch;
 mod observation;
 mod replay;
 mod state;
@@ -47,6 +48,10 @@ pub fn run() {
                 observations.clone(),
                 launch_at_login,
             );
+            notch::setup(
+                &app_handle,
+                state.global_observation() && state.notch_enabled(),
+            )?;
             observations.start()?;
 
             tauri::async_runtime::block_on(control::start_control_server(
@@ -73,6 +78,9 @@ pub fn run() {
             commands::set_global_observation,
             commands::set_launch_at_login,
             commands::set_notifications_available,
+            commands::set_notch_enabled,
+            commands::set_notch_presentation,
+            commands::open_main_window,
             commands::retry_observation,
             commands::mark_observation_notified,
             commands::update_evidence_settings,
@@ -104,7 +112,7 @@ pub fn run() {
     });
 }
 
-fn show_main_window(app: &tauri::AppHandle) {
+pub(crate) fn show_main_window(app: &tauri::AppHandle) {
     if let Some(window) = app.get_webview_window("main") {
         let _ = window.show();
         let _ = window.unminimize();

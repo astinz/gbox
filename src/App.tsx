@@ -50,6 +50,7 @@ function App() {
           busy={gbox.busy}
           onObservationChange={(enabled) => void gbox.setGlobalObservation(enabled)}
           onLaunchAtLoginChange={(enabled) => void gbox.setLaunchAtLogin(enabled)}
+          onNotchChange={(enabled) => void gbox.setNotchEnabled(enabled)}
           onSaveEvidence={(settings) => void gbox.updateEvidenceSettings(settings)}
         />
       )}

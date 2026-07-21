@@ -8,6 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -43,7 +44,9 @@ export function AppDialog({
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
-        <div className={cn("app-dialog__body", bodyClassName)}>{children}</div>
+        <ScrollArea className="app-dialog__scroll">
+          <div className={cn("app-dialog__body", bodyClassName)}>{children}</div>
+        </ScrollArea>
         {footer ? <DialogFooter className="app-dialog__footer">{footer}</DialogFooter> : null}
       </DialogContent>
     </Dialog>

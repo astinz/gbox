@@ -226,6 +226,7 @@ describe("gBox interface", () => {
         status={emptySnapshot.status}
         onObservationChange={onChange}
         onLaunchAtLoginChange={vi.fn()}
+        onNotchChange={vi.fn()}
       />,
     );
     fireEvent.click(screen.getByRole("switch", { name: "Global Codex observation" }));
@@ -240,12 +241,28 @@ describe("gBox interface", () => {
         status={emptySnapshot.status}
         onObservationChange={observe}
         onLaunchAtLoginChange={launch}
+        onNotchChange={vi.fn()}
       />,
     );
 
     fireEvent.click(screen.getByRole("switch", { name: "Launch gBox at login" }));
     expect(launch).toHaveBeenCalledWith(true, expect.anything());
     expect(observe).not.toHaveBeenCalled();
+  });
+
+  it("shows the observation notch setting only when macOS supports it", () => {
+    const toggle = vi.fn();
+    render(
+      <StatusBoard
+        status={{ ...emptySnapshot.status, notchAvailable: true, notchEnabled: true }}
+        onObservationChange={vi.fn()}
+        onLaunchAtLoginChange={vi.fn()}
+        onNotchChange={toggle}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("switch", { name: "Observation notch" }));
+    expect(toggle).toHaveBeenCalledWith(false, expect.anything());
   });
 
   it("starts deterministic replay from the composer", () => {
@@ -309,6 +326,7 @@ describe("gBox interface", () => {
         busy={false}
         onObservationChange={vi.fn()}
         onLaunchAtLoginChange={vi.fn()}
+        onNotchChange={vi.fn()}
         onSaveEvidence={vi.fn()}
       />,
     );
