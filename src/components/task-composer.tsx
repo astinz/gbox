@@ -22,7 +22,7 @@ type Props = {
   onReplay: () => void;
 };
 
-const samplePrompt = "Evaluate this intentionally false claim: ‘Acme had 42 production database users in 2026-Q2.’ Use the available company metric MCP to check it, clearly state the contradiction, and prepare a concise report for the gBox test webhook. Do not send it without human approval.";
+const samplePrompt = "Review this statement: ‘Acme had 42 production database users in 2026-Q2.’ Check it against the available company records, explain any conflict, and prepare a short report. Ask for approval before sending anything.";
 
 export function TaskComposer({
   busy,
@@ -55,33 +55,33 @@ export function TaskComposer({
       <CardHeader>
         <div className="flex items-start justify-between gap-4">
           <div>
-            <CardTitle>{sessionId ? "Continue hosted task" : "Start a hosted Codex task"}</CardTitle>
+            <CardTitle>{sessionId ? "Continue research" : "Start guided research"}</CardTitle>
             <CardDescription className="mt-1">
-              Read-only sandbox · genuine App Server events · existing Codex authentication
+              Uses your existing Codex sign-in and cannot change project files.
             </CardDescription>
           </div>
-          <span className="live-kicker"><RadioIcon className="size-3" /> JSONL</span>
+          <span className="live-kicker"><RadioIcon className="size-3" /> Secure</span>
         </div>
       </CardHeader>
       <CardContent>
         <FieldGroup className="gap-3">
           {!sessionId && (
             <Field>
-              <FieldLabel htmlFor="workspace">Workspace</FieldLabel>
-              <Input id="workspace" value={cwd} onChange={(event) => setCwd(event.target.value)} placeholder="Current repository (.)" />
+              <FieldLabel htmlFor="workspace">Research folder</FieldLabel>
+              <Input id="workspace" value={cwd} onChange={(event) => setCwd(event.target.value)} placeholder="Current project" />
             </Field>
           )}
           <Field>
-            <FieldLabel htmlFor="prompt">Instruction</FieldLabel>
+            <FieldLabel htmlFor="prompt">Research request</FieldLabel>
             <Textarea id="prompt" value={prompt} onChange={(event) => setPrompt(event.target.value)} rows={4} />
           </Field>
           <div className="flex flex-wrap items-center gap-2">
             <Button onClick={submit} disabled={busy || !prompt.trim()}>
               {busy ? <Spinner data-icon="inline-start" /> : <SendIcon data-icon="inline-start" />}
-              {sessionId ? "Send turn" : "Start live task"}
+              {sessionId ? "Continue" : "Start research"}
             </Button>
             <Button variant="outline" onClick={onReplay} disabled={busy}>
-              <PlayIcon data-icon="inline-start" /> Run deterministic replay
+              <PlayIcon data-icon="inline-start" /> Run guided demo
             </Button>
           </div>
           <LiveActivity activity={activity} />

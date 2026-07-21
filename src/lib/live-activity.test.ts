@@ -6,12 +6,12 @@ import type { CodexEvent } from "@/types/gbox";
 const startedAt = "2026-07-20T10:00:00.000Z";
 
 describe("live activity", () => {
-  it("shows connection feedback before the first App Server event", () => {
+  it("shows connection feedback before the first progress update", () => {
     const activity = buildLiveActivity([], { busy: true, startedAt });
     expect(activity.visible).toBe(true);
     expect(activity.phase).toBe("working");
     expect(activity.headline).toBe("Connecting to Codex");
-    expect(activity.detail).toContain("read-only hosted thread");
+    expect(activity.detail).toBe("Connecting securely to Codex.");
   });
 
   it("assembles public reasoning summaries in event order", () => {
@@ -32,7 +32,7 @@ describe("live activity", () => {
     ];
     const activity = buildLiveActivity(events, { busy: false, startedAt, sessionId: "thread-1" });
     expect(activity.phase).toBe("working");
-    expect(activity.headline).toBe("Reasoning summary");
+    expect(activity.headline).toBe("Approach");
     expect(activity.detail).toBe("Checking the company metric source.");
   });
 
@@ -45,10 +45,10 @@ describe("live activity", () => {
       event("turn", "turn/started", { turn: { id: "turn-1" } }),
     ], { busy: false, startedAt });
     expect(JSON.stringify(activity)).not.toContain("private hidden reasoning");
-    expect(activity.items.map((item) => item.label)).toEqual(["Codex turn started"]);
+    expect(activity.items.map((item) => item.label)).toEqual(["Research started"]);
   });
 
-  it("names MCP calls and marks the turn complete", () => {
+  it("presents connected-source checks and completion in plain language", () => {
     const events = [
       event("complete", "turn/completed", { turn: { id: "turn-1", status: "completed" } }, "2026-07-20T10:00:03.000Z"),
       event("tool-complete", "item/completed", {
@@ -73,8 +73,8 @@ describe("live activity", () => {
     ];
     const activity = buildLiveActivity(events, { busy: false, startedAt });
     expect(activity.phase).toBe("complete");
-    expect(activity.items.some((item) => item.label === "MCP · company_data / company_get_metric")).toBe(true);
-    expect(activity.items.some((item) => item.label === "Codex turn complete")).toBe(true);
+    expect(activity.items.some((item) => item.label === "Checking a connected source")).toBe(true);
+    expect(activity.items.some((item) => item.label === "Research complete")).toBe(true);
   });
 
   it("does not let a late delta overwrite a completed response", () => {
@@ -92,7 +92,7 @@ describe("live activity", () => {
       event("turn", "turn/started", { turn: { id: "turn-1" } }),
     ];
     const activity = buildLiveActivity(events, { busy: false, startedAt });
-    expect(activity.headline).toBe("Assistant response received");
+    expect(activity.headline).toBe("Response ready");
     expect(activity.detail).toBe("Final answer.");
   });
 
@@ -105,7 +105,7 @@ describe("live activity", () => {
     ];
     const activity = buildLiveActivity(events, { busy: false, startedAt });
     expect(activity.phase).toBe("working");
-    expect(activity.headline).toBe("Assistant response received");
+    expect(activity.headline).toBe("Response ready");
     expect(activity.detail).toBe("Evidence checked.");
   });
 });

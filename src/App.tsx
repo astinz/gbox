@@ -19,7 +19,7 @@ function App() {
 
   return (
     <main className="app-shell">
-      <AppHeader screen={screen} status={gbox.snapshot.status} onNavigate={setScreen} />
+      <AppHeader screen={screen} onNavigate={setScreen} />
 
       {gbox.error ? (
         <Alert variant="destructive" className="mb-4">

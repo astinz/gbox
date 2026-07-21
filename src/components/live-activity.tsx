@@ -25,12 +25,12 @@ export function LiveActivity({ activity }: { activity: LiveActivityModel }) {
       className="live-activity"
       aria-live="polite"
       aria-busy={working}
-      aria-label="Codex live activity"
+      aria-label="Research progress"
       role="region"
     >
       <CardHeader className="border-b">
-        <CardTitle>Live activity</CardTitle>
-        <CardDescription>Observable App Server progress for this turn.</CardDescription>
+        <CardTitle>Research progress</CardTitle>
+        <CardDescription>What gBox can safely show while your request is running.</CardDescription>
         <CardAction>
           <Badge variant={activity.phase === "failed" ? "destructive" : working ? "secondary" : "outline"}>
             {working ? <Spinner /> : null}
@@ -63,7 +63,7 @@ export function LiveActivity({ activity }: { activity: LiveActivityModel }) {
         ) : null}
       </CardContent>
       <CardFooter className="text-[10px] leading-relaxed text-muted-foreground">
-        Public reasoning summaries and tool activity are shown. Private chain-of-thought is never displayed.
+        Only shareable progress is shown. Private reasoning is never displayed.
       </CardFooter>
     </Card>
   );

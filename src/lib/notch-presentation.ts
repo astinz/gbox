@@ -25,7 +25,7 @@ export function phaseLabel(phase: NotchPhase, observation?: Observation): string
 }
 
 export function verdictSummary(observation?: Observation): string {
-  if (!observation) return "Waiting for a completed Codex turn";
+  if (!observation) return "Waiting for completed research";
   const counts = observation.verdictCounts;
   return `${counts.contradicted} contradicted · ${counts.unverifiable} review · ${counts.verified} verified`;
 }

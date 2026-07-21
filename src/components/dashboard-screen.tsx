@@ -5,7 +5,6 @@ import { AppDialog } from "@/components/app-dialog";
 import { ClaimDetail } from "@/components/claim-detail";
 import { ClaimLedger } from "@/components/claim-ledger";
 import { DashboardOverview, type DashboardDetail } from "@/components/dashboard-overview";
-import { EventTimeline } from "@/components/event-timeline";
 import { TaskComposer } from "@/components/task-composer";
 import type { LiveActivitySource } from "@/lib/live-activity";
 import type { Claim, CodexEvent, DashboardSnapshot } from "@/types/gbox";
@@ -63,10 +62,9 @@ export function DashboardScreen({
     <>
       <section className="page-intro">
         <div>
-          <p className="eyebrow">Local evidence control</p>
-          <h1>Research, with a second set of eyes.</h1>
+          <p className="eyebrow">Claim review</p>
+          <h1>Automate, with a second set of eyes.</h1>
         </div>
-        <p>gBox checks material claims after each completed Codex turn and brings exceptions forward.</p>
       </section>
 
       <DashboardOverview
@@ -89,7 +87,6 @@ export function DashboardScreen({
             onSelectClaim={openClaim}
           />
         ) : null}
-        {openView?.kind === "events" ? <EventTimeline events={snapshot.events} /> : null}
         {openView?.kind === "actions" ? (
           <ActionHistory actions={snapshot.actions} receipts={snapshot.receipts} />
         ) : null}
@@ -118,19 +115,17 @@ export function DashboardScreen({
 }
 
 function dialogTitle(view?: OpenView): string {
-  if (view?.kind === "claims") return "Claim ledger";
-  if (view?.kind === "events") return "Codex App Server events";
-  if (view?.kind === "actions") return "Actions and receipt chain";
-  if (view?.kind === "tools") return "Hosted and replay test tools";
-  if (view?.kind === "claim") return "Verification dossier";
-  return "gBox details";
+  if (view?.kind === "claims") return "All reviewed claims";
+  if (view?.kind === "actions") return "Decisions and history";
+  if (view?.kind === "tools") return "Try gBox";
+  if (view?.kind === "claim") return "Claim review";
+  return "Details";
 }
 
 function dialogDescription(view?: OpenView, claim?: Claim): string {
-  if (view?.kind === "claims") return "Filter every extracted claim and open its verification record.";
-  if (view?.kind === "events") return "Raw hosted and replay event telemetry, ordered by arrival.";
-  if (view?.kind === "actions") return "Protected side effects and their tamper-evident decision receipts.";
-  if (view?.kind === "tools") return "Run the deterministic judge path or a gBox-hosted Codex session.";
-  if (view?.kind === "claim") return claim?.statement ?? "Full extraction and verification trace.";
-  return "Detailed audit information.";
+  if (view?.kind === "claims") return "Filter reviewed claims and open the evidence behind each result.";
+  if (view?.kind === "actions") return "See what was approved or denied and confirm the decision history is intact.";
+  if (view?.kind === "tools") return "Run a guided example or start research with gBox.";
+  if (view?.kind === "claim") return claim?.statement ?? "See the evidence behind this result.";
+  return "More information.";
 }

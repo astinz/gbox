@@ -9,8 +9,8 @@ describe("Codex correction prompt", () => {
 
     expect(prompt).toContain("Acme had 42 production database users");
     expect(prompt).toContain("authoritative value is 17");
-    expect(prompt).toContain("company_data/company_get_metric");
-    expect(prompt).toContain("deterministic adapter");
+    expect(prompt).toContain("Company records");
+    expect(prompt).toContain("exact source comparison");
     expect(prompt).toContain("correct your prior answer");
   });
 });

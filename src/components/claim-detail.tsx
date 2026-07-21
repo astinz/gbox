@@ -22,10 +22,10 @@ type Props = {
 };
 
 const methodLabels = {
-  deterministic_adapter: "Deterministic adapter",
-  model_assisted_mcp: "Model-assisted MCP",
-  model_assisted_web: "Model-assisted web",
-  no_comparison: "No comparison",
+  deterministic_adapter: "Exact source comparison",
+  model_assisted_mcp: "Connected-source comparison",
+  model_assisted_web: "Public-source comparison",
+  no_comparison: "No comparison available",
 } as const;
 
 export function ClaimDetail({ claim, evidence, failures }: Props) {
@@ -37,9 +37,9 @@ export function ClaimDetail({ claim, evidence, failures }: Props) {
   const otherSources = eligibleSources.filter((source) => !planMatches(source, plan));
 
   return (
-    <article className="claim-detail" aria-label={`Verification detail for ${claim.statement}`}>
+    <article className="claim-detail" aria-label={`Evidence review for ${claim.statement}`}>
       <div className="claim-detail__meta">
-        <code>{claim.id.slice(0, 12)}</code>
+        <span className="eyebrow">Evidence review</span>
         <div className="flex items-center gap-2">
           {claim.state === "Contradicted" && latest ? (
             <Button
@@ -67,54 +67,54 @@ export function ClaimDetail({ claim, evidence, failures }: Props) {
       </div>
       <div className="claim-dossier__body">
           <section className="dossier-section">
-            <SectionHeading icon={BracesIcon} label="Extracted structure" />
+            <SectionHeading icon={BracesIcon} label="What gBox understood" />
             <p className="dossier-statement">{claim.statement}</p>
             <dl className="claim-fields">
-              <ClaimField label="Type" value={claim.claimType} />
+              <ClaimField label="Category" value={friendlyName(claim.claimType)} />
               <ClaimField label="Subject" value={claim.subject} />
-              <ClaimField label="Predicate" value={claim.predicate} />
-              <ClaimField label="Object" value={claim.object} />
+              <ClaimField label="Topic" value={claim.predicate ? friendlyName(claim.predicate) : undefined} />
+              <ClaimField label="Description" value={claim.object} />
               <ClaimField label="Value" value={joinValue(claim.assertedValue, claim.unit)} />
               <ClaimField label="When" value={claim.temporalContext} />
               <ClaimField label="Where" value={claim.location} />
-              <ClaimField label="Verdict confidence" value={`${Math.round(claim.confidence * 100)}%`} />
+              <ClaimField label="Confidence" value={`${Math.round(claim.confidence * 100)}%`} />
             </dl>
             <div className="source-span">
-              <span>Exact source span</span>
+              <span>Original wording</span>
               <q>{claim.sourceSpan}</q>
             </div>
           </section>
 
           <section className="dossier-section">
-            <SectionHeading icon={RouteIcon} label="Selected route" />
+            <SectionHeading icon={RouteIcon} label="How this was checked" />
             {plan ? (
               <>
                 <div className="route-line">
-                  <span className="route-node">Claim</span>
+                  <span className="route-node">Statement</span>
                   <ArrowRightIcon />
                   <span className="route-node route-node--selected">{planLabel(plan)}</span>
                   <ArrowRightIcon />
-                  <span className="route-node">Verdict</span>
+                  <span className="route-node">Result</span>
                 </div>
-                <p className="route-rationale">{plan.rationale}</p>
+                <p className="route-rationale">{planRationale(plan)}</p>
                 {(plan.arguments || plan.query) && (
                   <CodeDisclosure
-                    label={plan.arguments ? "Planned arguments" : "Search query"}
+                    label={plan.arguments ? "Lookup details" : "Search terms"}
                     value={plan.arguments ?? plan.query}
                   />
                 )}
               </>
             ) : (
-              <EmptyDetail>No source plan was stored for this evidence.</EmptyDetail>
+              <EmptyDetail>No checking approach was saved for this evidence.</EmptyDetail>
             )}
           </section>
 
           <section className="dossier-section">
-            <SectionHeading icon={DatabaseIcon} label="Eligible at decision time" />
+            <SectionHeading icon={DatabaseIcon} label="Sources considered" />
             {eligibleSources.length ? (
               <div className="source-catalog">
                 <p className="source-catalog__count">
-                  {eligibleSources.length} read-only {eligibleSources.length === 1 ? "source was" : "sources were"} eligible.
+                  {eligibleSources.length} trusted {eligibleSources.length === 1 ? "source was" : "sources were"} available.
                 </p>
                 {selectedSources.map((source) => (
                   <SourceCatalogItem key={sourceKey(source)} source={source} selected />
@@ -122,7 +122,7 @@ export function ClaimDetail({ claim, evidence, failures }: Props) {
                 {otherSources.length > 0 && (
                   <details className="source-catalog__more">
                     <summary>
-                      Inspect {otherSources.length} other eligible {otherSources.length === 1 ? "source" : "sources"}
+                      View {otherSources.length} other {otherSources.length === 1 ? "source" : "sources"}
                     </summary>
                     <div className="source-catalog__list">
                       {otherSources.map((source) => (
@@ -133,49 +133,52 @@ export function ClaimDetail({ claim, evidence, failures }: Props) {
                 )}
               </div>
             ) : (
-              <EmptyDetail>No source-catalog snapshot is available.</EmptyDetail>
+              <EmptyDetail>No source list was saved for this check.</EmptyDetail>
             )}
           </section>
 
           <section className="dossier-section">
-            <SectionHeading icon={CheckCircle2Icon} label="Evidence and comparison" />
+            <SectionHeading icon={CheckCircle2Icon} label="Evidence reviewed" />
             {latest ? (
               <>
                 <div className="evidence-summary">
-                  <span>{latest.sourceName}</span>
+                  <span>{sourceDisplayName(latest.sourceName)}</span>
                   <p>{latest.explanation}</p>
                 </div>
                 <dl className="evidence-metadata">
-                  <ClaimField label="Method" value={methodLabels[latest.comparisonMethod]} />
-                  <ClaimField label="Reference" value={latest.sourceReference} />
-                  <ClaimField label="SHA-256" value={latest.resultHash} />
+                  <ClaimField label="Comparison" value={methodLabels[latest.comparisonMethod]} />
+                  <ClaimField label="Source" value={sourceDisplayName(latest.sourceName)} />
                 </dl>
                 <CodeDisclosure label={evidencePayloadLabel(latest)} value={latest.content ?? null} />
+                <CodeDisclosure
+                  label="Audit details"
+                  value={{ evidenceFingerprint: latest.resultHash, sourceReference: latest.sourceReference }}
+                />
               </>
             ) : (
-              <EmptyDetail>No evidence has been stored for this claim.</EmptyDetail>
+              <EmptyDetail>No evidence was available for this claim.</EmptyDetail>
             )}
           </section>
 
           <section className="dossier-section">
-            <SectionHeading icon={TriangleAlertIcon} label="Failure history" />
+            <SectionHeading icon={TriangleAlertIcon} label="Issues encountered" />
             {failures.length ? (
               <ol className="failure-history">
                 {failures.map((failure) => (
                   <li key={failure.id}>
                     <span className="failure-history__node" />
                     <div>
-                      <p><strong>{failure.stage}</strong><time>{formatTime(failure.createdAt)}</time></p>
+                      <p><strong>{friendlyFailureStage(failure.stage)}</strong><time>{formatTime(failure.createdAt)}</time></p>
                       <span>{failure.message}</span>
                       {failure.details != null
-                        ? <CodeDisclosure label="Failure details" value={failure.details} />
+                        ? <CodeDisclosure label="More information" value={failure.details} />
                         : null}
                     </div>
                   </li>
                 ))}
               </ol>
             ) : (
-              <p className="failure-clear"><CheckCircle2Icon />No verification failures recorded.</p>
+              <p className="failure-clear"><CheckCircle2Icon />No issues encountered.</p>
             )}
           </section>
       </div>
@@ -209,9 +212,9 @@ function joinValue(value?: string, unit?: string): string | undefined {
 }
 
 function planLabel(plan: NonNullable<Evidence["selectedPlan"]>): string {
-  if (plan.sourceType === "mcp") return `${plan.server ?? "MCP"}/${plan.tool ?? "tool"}`;
-  if (plan.sourceType === "web_search") return "Web search";
-  return "No source";
+  if (plan.sourceType === "mcp") return sourceDisplayName(plan.server ?? plan.tool ?? "Connected source");
+  if (plan.sourceType === "web_search") return "Public web";
+  return "No evidence source";
 }
 
 function sourceKey(source: Evidence["eligibleSources"][number]): string {
@@ -229,9 +232,11 @@ function SourceCatalogItem({
     <div className="source-catalog__item">
       {source.sourceKind === "web_search" ? <Globe2Icon /> : <DatabaseIcon />}
       <div>
-        <p>{source.tool ?? source.title}</p>
+        <p>{sourceDisplayName(source.tool ?? source.title ?? "Evidence source")}</p>
         <span>
-          {source.server ?? "built-in"} · {source.pluginBacked ? "plugin MCP" : source.sourceKind}
+          {source.sourceKind === "web_search"
+            ? "Public web source"
+            : `${friendlyName(source.server ?? "Connected source")} · trusted evidence`}
         </span>
       </div>
       {selected && <Badge variant="secondary">selected</Badge>}
@@ -241,8 +246,38 @@ function SourceCatalogItem({
 
 function evidencePayloadLabel(evidence: Evidence): string {
   return evidence.comparisonMethod === "model_assisted_web"
-    ? "Stored verifier output (not a page snapshot)"
-    : "Raw stored evidence";
+    ? "Evidence details"
+    : "Original evidence record";
+}
+
+function friendlyName(value: string): string {
+  return value.replace(/[\/_-]+/g, " ").replace(/\b\w/g, (character) => character.toUpperCase());
+}
+
+function sourceDisplayName(value: string): string {
+  const normalized = value.toLowerCase();
+  if (normalized.includes("company_get_metric") || normalized === "company_data") return "Company records";
+  if (normalized.includes("web_search")) return "Public web";
+  return friendlyName(value);
+}
+
+function planRationale(plan: NonNullable<Evidence["selectedPlan"]>): string {
+  if (plan.sourceType === "web_search") {
+    return "Public sources were selected because they best match the subject and timing of this claim.";
+  }
+  if (plan.sourceType === "mcp") {
+    return "This trusted source was selected because it directly covers the subject, topic, and time period in the claim.";
+  }
+  return "No suitable evidence source was available for this claim.";
+}
+
+function friendlyFailureStage(stage: string): string {
+  const normalized = stage.toLowerCase();
+  if (normalized.includes("extract")) return "Understanding the claim";
+  if (normalized.includes("source") || normalized.includes("plan")) return "Choosing evidence";
+  if (normalized.includes("retriev") || normalized.includes("tool")) return "Collecting evidence";
+  if (normalized.includes("compar") || normalized.includes("verif")) return "Comparing the evidence";
+  return "Reviewing the claim";
 }
 
 function planMatches(

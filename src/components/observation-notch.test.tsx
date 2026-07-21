@@ -30,7 +30,7 @@ describe("ObservationNotch", () => {
       />,
     );
 
-    expect(screen.getByText("Captured from Codex")).toBeInTheDocument();
+    expect(screen.getByText("Research received")).toBeInTheDocument();
     expect(screen.getAllByText("Contradicted")).toHaveLength(2);
     expect(screen.getByText(contradicted.messageExcerpt)).toBeInTheDocument();
   });
@@ -63,7 +63,7 @@ describe("ObservationNotch", () => {
     );
 
     expect(screen.getByText("Latest result")).toBeInTheDocument();
-    expect(screen.getByText("Latest Codex observation")).toBeInTheDocument();
+    expect(screen.getByText("Latest research check")).toBeInTheDocument();
     expect(screen.getByText("Contradicted")).toBeInTheDocument();
   });
 });

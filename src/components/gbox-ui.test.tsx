@@ -155,13 +155,13 @@ describe("gBox interface", () => {
         }]}
       />,
     );
-    expect(screen.getByRole("heading", { name: "Extracted structure" })).toBeInTheDocument();
-    expect(screen.getByText("This is the narrow authoritative source.")).toBeInTheDocument();
-    expect(screen.getAllByText("Deterministic adapter")).not.toHaveLength(0);
+    expect(screen.getByRole("heading", { name: "What gBox understood" })).toBeInTheDocument();
+    expect(screen.getByText(/directly covers the subject, topic, and time period/i)).toBeInTheDocument();
+    expect(screen.getAllByText("Exact source comparison")).not.toHaveLength(0);
     expect(screen.getByText("An earlier source attempt timed out.")).toBeInTheDocument();
-    expect(screen.getByText("Raw stored evidence")).toBeInTheDocument();
-    expect(screen.getByText("2 read-only sources were eligible.")).toBeInTheDocument();
-    expect(screen.getByText("Inspect 1 other eligible source")).toBeInTheDocument();
+    expect(screen.getByText("Original evidence record")).toBeInTheDocument();
+    expect(screen.getByText("2 trusted sources were available.")).toBeInTheDocument();
+    expect(screen.getByText("View 1 other source")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Copy correction for Codex" })).toBeInTheDocument();
   });
 
@@ -214,7 +214,7 @@ describe("gBox interface", () => {
         onSelectClaim={onSelect}
       />,
     );
-    expect(screen.queryByRole("heading", { name: "Extracted structure" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "What gBox understood" })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /Verified test claim/ }));
     expect(onSelect).toHaveBeenCalledWith(selected);
   });
@@ -229,7 +229,7 @@ describe("gBox interface", () => {
         onNotchChange={vi.fn()}
       />,
     );
-    fireEvent.click(screen.getByRole("switch", { name: "Global Codex observation" }));
+    fireEvent.click(screen.getByRole("switch", { name: "Monitor Codex research" }));
     expect(onChange).toHaveBeenCalledWith(true, expect.anything());
   });
 
@@ -245,7 +245,7 @@ describe("gBox interface", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("switch", { name: "Launch gBox at login" }));
+    fireEvent.click(screen.getByRole("switch", { name: "Open gBox at login" }));
     expect(launch).toHaveBeenCalledWith(true, expect.anything());
     expect(observe).not.toHaveBeenCalled();
   });
@@ -261,11 +261,11 @@ describe("gBox interface", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("switch", { name: "Observation notch" }));
+    fireEvent.click(screen.getByRole("switch", { name: "Top-of-screen updates" }));
     expect(toggle).toHaveBeenCalledWith(false, expect.anything());
   });
 
-  it("starts deterministic replay from the composer", () => {
+  it("starts the guided demo from the composer", () => {
     const replay = vi.fn();
     render(
       <TaskComposer
@@ -275,7 +275,7 @@ describe("gBox interface", () => {
         onReplay={replay}
       />,
     );
-    fireEvent.click(screen.getByRole("button", { name: /run deterministic replay/i }));
+    fireEvent.click(screen.getByRole("button", { name: /run guided demo/i }));
     expect(replay).toHaveBeenCalledOnce();
   });
 
@@ -289,12 +289,12 @@ describe("gBox interface", () => {
         onReplay={vi.fn()}
       />,
     );
-    expect(screen.getByRole("region", { name: "Codex live activity" })).toHaveAttribute("aria-busy", "true");
+    expect(screen.getByRole("region", { name: "Research progress" })).toHaveAttribute("aria-busy", "true");
     expect(screen.getByText("Connecting to Codex")).toBeInTheDocument();
-    expect(screen.getByText(/Private chain-of-thought is never displayed/)).toBeInTheDocument();
+    expect(screen.getByText(/Private reasoning is never displayed/)).toBeInTheDocument();
   });
 
-  it("saves Codex inheritance and gBox-specific MCP settings", () => {
+  it("saves existing and additional evidence sources", () => {
     const save = vi.fn();
     render(
       <EvidenceSettingsPanel
@@ -304,15 +304,16 @@ describe("gBox interface", () => {
         onSave={save}
       />,
     );
-    fireEvent.click(screen.getByRole("switch", { name: "Use existing Codex MCP configuration" }));
-    fireEvent.change(screen.getByLabelText("gBox-specific MCP servers (JSON)"), {
+    fireEvent.click(screen.getByRole("switch", { name: "Use sources already connected to Codex" }));
+    fireEvent.click(screen.getByText("Managed source setup"));
+    fireEvent.change(screen.getByLabelText("Additional source connections"), {
       target: {
         value: JSON.stringify([
           { name: "facts", enabled: true, transport: "stdio", command: "facts-mcp", args: [], envVars: [] },
         ]),
       },
     });
-    fireEvent.click(screen.getByRole("button", { name: /save and discover/i }));
+    fireEvent.click(screen.getByRole("button", { name: /save sources/i }));
     expect(save).toHaveBeenCalledWith(expect.objectContaining({
       useCodexMcpConfig: false,
       mcpServers: [expect.objectContaining({ name: "facts" })],
@@ -331,13 +332,13 @@ describe("gBox interface", () => {
       />,
     );
     expect(screen.getByRole("heading", { name: "Settings" })).toBeInTheDocument();
-    expect(screen.getByRole("switch", { name: "Global Codex observation" })).toBeInTheDocument();
-    expect(screen.getAllByText("Evidence sources")).not.toHaveLength(0);
+    expect(screen.getByRole("switch", { name: "Monitor Codex research" })).toBeInTheDocument();
+    expect(screen.getAllByText("Sources used for checks")).not.toHaveLength(0);
   });
 
   it("navigates between the dashboard and settings screens", () => {
     const navigate = vi.fn();
-    render(<AppHeader screen="dashboard" status={emptySnapshot.status} onNavigate={navigate} />);
+    render(<AppHeader screen="dashboard" onNavigate={navigate} />);
     fireEvent.click(screen.getByRole("button", { name: "Settings" }));
     expect(navigate).toHaveBeenCalledWith("settings");
   });

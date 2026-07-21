@@ -26,6 +26,15 @@ These rules apply to the entire repository.
 - Format Rust with `cargo fmt`/`rustfmt` and follow the project's TypeScript formatting and linting configuration.
 - Preserve existing naming conventions and directory boundaries when adding new code.
 
+## UI and Copy
+
+- Write all user-facing interfaces for executives and end users, not for engineers building gBox.
+- Describe outcomes, decisions, evidence, and next steps in plain language.
+- Never expose internal engine mechanics in product copy, including Codex turns, hooks, pipelines, execution loops, App Server events, JSONL, workers, queues, or internal service names.
+- Keep implementation terminology in source code, tests, logs, and developer documentation only. Translate it before presenting status or errors in the interface.
+- Prefer concise labels such as “Research complete,” “Checking evidence,” and “Needs review” over protocol or subsystem names.
+- Avoid generic AI-product styling and copy: no vague slogans, ornamental status clutter, excessive cards or pills, decorative gradients, or features presented without a clear user decision or outcome.
+
 ## Completion Check
 
 Before completing a change:

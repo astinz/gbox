@@ -28,8 +28,8 @@ export function ClaimLedger({ claims, evidence, onSelectClaim }: Props) {
     <div className="panel-surface claim-index">
         <div className="panel-toolbar">
           <div>
-            <p className="eyebrow">Evidence ledger</p>
-            <h2 className="panel-title">Claims</h2>
+            <p className="eyebrow">Research review</p>
+            <h2 className="panel-title">All claims</h2>
           </div>
           <ToggleGroup
             value={[filter]}
@@ -50,7 +50,7 @@ export function ClaimLedger({ claims, evidence, onSelectClaim }: Props) {
             <EmptyHeader>
               <EmptyMedia variant="icon"><CircleHelpIcon /></EmptyMedia>
               <EmptyTitle>No claims in this view</EmptyTitle>
-              <EmptyDescription>Run the replay or a live task to populate the evidence ledger.</EmptyDescription>
+              <EmptyDescription>Run the guided demo or complete research in Codex to see reviewed claims.</EmptyDescription>
             </EmptyHeader>
           </Empty>
         ) : (

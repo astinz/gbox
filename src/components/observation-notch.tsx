@@ -30,7 +30,7 @@ export function ObservationNotch({
   const verdictLabel = previewingLatest
     ? phaseLabel("completed", observation)
     : label;
-  const excerpt = observation?.messageExcerpt ?? "Waiting for a completed Codex turn";
+  const excerpt = observation?.messageExcerpt ?? "Waiting for completed research";
 
   return (
     <section
@@ -38,7 +38,7 @@ export function ObservationNotch({
       data-expanded={expanded}
       data-phase={phase}
       data-verdict={verdict}
-      aria-label="gBox observation status"
+      aria-label="gBox research status"
       aria-live="polite"
     >
       {expanded ? (
@@ -53,12 +53,12 @@ export function ObservationNotch({
           </header>
           <div className="observation-notch__body">
             <div className="observation-notch__capture">
-              <span>{previewingLatest ? "Latest Codex observation" : "Captured from Codex"}</span>
+              <span>{previewingLatest ? "Latest research check" : "Research received"}</span>
               <strong>{excerpt}</strong>
               <small>{detailLine(phase, previewingLatest)}</small>
             </div>
             <div className="observation-notch__result">
-              <span>Observation</span>
+              <span>Result</span>
               <div>
                 <Badge variant={badgeVariant(verdict)}>{verdictLabel}</Badge>
                 <Button variant="secondary" size="xs" onClick={onReview}>
@@ -73,7 +73,7 @@ export function ObservationNotch({
         <button className="observation-notch__compact" type="button" onClick={onReview}>
           <span aria-hidden="true" />
           <span className="sr-only">
-            {queueDepth > 0 ? `${queueDepth} observations queued; open gBox` : "Open gBox"}
+            {queueDepth > 0 ? `${queueDepth} checks waiting; open gBox` : "Open gBox"}
           </span>
         </button>
       )}
@@ -82,11 +82,11 @@ export function ObservationNotch({
 }
 
 function detailLine(phase: NotchPhase, previewingLatest: boolean) {
-  if (previewingLatest) return "Hover preview · open gBox for evidence";
-  if (phase === "checking") return "Selecting eligible evidence sources";
-  if (phase === "captured") return "Completed assistant response captured";
-  if (phase === "failed") return "Open gBox to inspect the failure";
-  return "Verification complete";
+  if (previewingLatest) return "Open gBox to review the evidence";
+  if (phase === "checking") return "Reviewing available evidence";
+  if (phase === "captured") return "Research ready for review";
+  if (phase === "failed") return "Open gBox to see what needs attention";
+  return "Review complete";
 }
 
 function badgeVariant(verdict: ReturnType<typeof observationVerdict>) {

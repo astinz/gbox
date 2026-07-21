@@ -23,10 +23,10 @@ export function SettingsScreen({
     <>
       <section className="page-intro page-intro--settings">
         <div>
-          <p className="eyebrow">System-wide configuration</p>
+          <p className="eyebrow">Preferences</p>
           <h1>Settings</h1>
         </div>
-        <p>Manage runtime trust, global observation, and the evidence sources available to every session.</p>
+        <p>Choose how gBox monitors research, alerts you, and finds evidence.</p>
       </section>
       <section className="settings-layout">
         <StatusBoard

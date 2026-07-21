@@ -60,7 +60,7 @@ export function buildLiveActivity(
   return {
     visible: true,
     phase,
-    headline: latest?.label ?? (source === "replay" ? "Preparing replay" : "Connecting to Codex"),
+    headline: latest?.label ?? (source === "replay" ? "Preparing the demo" : "Connecting to Codex"),
     detail: latest?.detail ?? connectingDetail(source),
     items: ordered.slice(-MAX_VISIBLE_ITEMS).reverse(),
   };
@@ -72,12 +72,12 @@ function applyEvent(items: Map<string, LiveActivityItem>, event: CodexEvent) {
   const itemId = stringValue(item.id) ?? stringValue(payload.itemId) ?? event.id;
 
   if (event.method === "thread/started") {
-    upsert(items, `thread:${event.sessionId ?? itemId}`, "Connected to Codex App Server", "The hosted thread is ready.", "complete", event);
+    upsert(items, `thread:${event.sessionId ?? itemId}`, "Codex is ready", "Your secure research session is available.", "complete", event);
     return;
   }
   if (event.method === "turn/started") {
     const turnId = stringValue(asRecord(payload.turn).id) ?? stringValue(payload.turnId) ?? itemId;
-    upsert(items, `turn:${turnId}`, "Codex turn started", "Waiting for the first observable model activity.", "active", event);
+    upsert(items, `turn:${turnId}`, "Research started", "Waiting for the first progress update.", "active", event);
     return;
   }
   if (event.method === "turn/completed") {
@@ -85,7 +85,7 @@ function applyEvent(items: Map<string, LiveActivityItem>, event: CodexEvent) {
     const turnId = stringValue(turnRecord.id) ?? stringValue(payload.turnId) ?? itemId;
     const status = stringValue(turnRecord.status);
     const state = status === "failed" ? "failed" : "complete";
-    upsert(items, `turn:${turnId}`, state === "failed" ? "Codex turn failed" : "Codex turn complete", status ? `Final status: ${status}.` : "The response stream has finished.", state, event);
+    upsert(items, `turn:${turnId}`, state === "failed" ? "Research stopped" : "Research complete", status === "failed" ? "Codex could not complete the request." : "The response is ready.", state, event);
     return;
   }
 
@@ -95,14 +95,14 @@ function applyEvent(items: Map<string, LiveActivityItem>, event: CodexEvent) {
     const key = `reasoning:${itemId}:${numberValue(payload.summaryIndex) ?? 0}`;
     const prior = items.get(key)?.detail ?? "";
     const detail = compact(`${prior}${stringValue(payload.delta) ?? ""}`);
-    upsert(items, key, "Reasoning summary", detail || "Codex is summarizing its approach.", "active", event);
+    upsert(items, key, "Approach", detail || "Codex is outlining how it will answer.", "active", event);
     return;
   }
 
   if (event.method === "item/mcpToolCall/progress") {
     const key = `mcp:${itemId}`;
     const prior = items.get(key);
-    upsert(items, key, prior?.label ?? "MCP tool call", compact(stringValue(payload.message) ?? "The evidence source is responding."), "active", event);
+    upsert(items, key, prior?.label ?? "Checking a connected source", compact(stringValue(payload.message) ?? "The evidence source is responding."), "active", event);
     return;
   }
 
@@ -110,7 +110,7 @@ function applyEvent(items: Map<string, LiveActivityItem>, event: CodexEvent) {
     const key = `message:${itemId}`;
     const prior = items.get(key)?.detail ?? "";
     const detail = compact(`${prior}${stringValue(payload.delta) ?? ""}`);
-    upsert(items, key, "Streaming assistant response", detail || "The final response is arriving.", "active", event);
+    upsert(items, key, "Preparing the response", detail || "The final response is arriving.", "active", event);
     return;
   }
 
@@ -130,26 +130,24 @@ function applyThreadItem(
   const state = complete ? "complete" : "active";
   if (type === "reasoning") {
     const summary = stringArray(item.summary).join(" ");
-    upsert(items, `reasoning:${itemId}:0`, "Reasoning summary", compact(summary) || "Codex is evaluating the instruction.", state, event);
+    upsert(items, `reasoning:${itemId}:0`, "Approach", compact(summary) || "Codex is reviewing the request.", state, event);
   } else if (type === "mcpToolCall") {
     const server = stringValue(item.server);
-    const tool = stringValue(item.tool);
-    const name = [server, tool].filter(Boolean).join(" / ");
     const status = stringValue(item.status);
-    upsert(items, `mcp:${itemId}`, name ? `MCP · ${name}` : "MCP tool call", status ? `Tool status: ${status}.` : "Calling a configured evidence source.", status === "failed" ? "failed" : state, event);
+    upsert(items, `mcp:${itemId}`, "Checking a connected source", status === "failed" ? "The source could not complete the check." : server ? `Using ${friendlySourceName(server)}.` : "Reviewing available evidence.", status === "failed" ? "failed" : state, event);
   } else if (type === "webSearch") {
     const query = compact(stringValue(item.query) ?? "");
-    upsert(items, `web:${itemId}`, "Web search", query ? `Query: ${query}` : "Searching configured public sources.", state, event);
+    upsert(items, `web:${itemId}`, "Checking public sources", query ? `Looking for: ${query}` : "Reviewing available public evidence.", state, event);
   } else if (type === "commandExecution") {
     const status = stringValue(item.status);
-    upsert(items, `command:${itemId}`, "Read-only command", status ? `Command status: ${status}.` : "Inspecting the hosted workspace.", status === "failed" ? "failed" : state, event);
+    upsert(items, `command:${itemId}`, "Reviewing the project", status === "failed" ? "The project could not be reviewed." : "Inspecting relevant project information.", status === "failed" ? "failed" : state, event);
   } else if (type === "fileChange") {
-    upsert(items, `file:${itemId}`, "File change", complete ? "The file operation finished." : "A file operation was requested.", state, event);
+    upsert(items, `file:${itemId}`, "Updating the project", complete ? "The requested update finished." : "A project update was requested.", state, event);
   } else if (type === "agentMessage") {
     const text = compact(stringValue(item.text) ?? "");
-    upsert(items, `message:${itemId}`, complete ? "Assistant response received" : "Streaming assistant response", text || "The response is being composed.", state, event);
+    upsert(items, `message:${itemId}`, complete ? "Response ready" : "Preparing the response", text || "The response is being composed.", state, event);
   } else if (type === "contextCompaction") {
-    upsert(items, `context:${itemId}`, "Context compacted", "Codex condensed earlier context before continuing.", state, event);
+    upsert(items, `context:${itemId}`, "Preparing to continue", "Codex is organizing earlier information before continuing.", state, event);
   }
 }
 
@@ -221,8 +219,13 @@ function lastMatching(
 
 function connectingDetail(source: LiveActivitySource): string {
   return source === "replay"
-    ? "Loading recorded events through the real gBox pipeline."
-    : "Starting the App Server and opening a read-only hosted thread.";
+    ? "Loading a guided example with recorded research."
+    : "Connecting securely to Codex.";
+}
+
+function friendlySourceName(server?: string): string {
+  if (!server) return "a connected evidence source";
+  return server.replace(/[_-]+/g, " ");
 }
 
 function hiddenActivity(): LiveActivityModel {

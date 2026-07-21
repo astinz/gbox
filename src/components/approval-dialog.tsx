@@ -41,8 +41,8 @@ export function ApprovalDialog({ action, claims, busy, error, onResolve }: Props
     <AppDialog
       open={Boolean(action)}
       onOpenChange={() => undefined}
-      title="Allow this webhook?"
-      description="Every protected delivery requires an explicit decision, regardless of claim verdict."
+      title="Allow this report to be sent?"
+      description="gBox always asks before sending a report, regardless of the evidence result."
       width="compact"
       dismissible={false}
       bodyClassName="approval-dialog__body"
@@ -65,21 +65,21 @@ export function ApprovalDialog({ action, claims, busy, error, onResolve }: Props
             <code className="text-[10px] text-muted-foreground">{action.id.slice(0, 8)}</code>
           </div>
           <section>
-            <p className="eyebrow">Fixed destination</p>
-            <p className="mt-1 font-medium">Bundled loopback test sink</p>
-            <p className="text-xs text-muted-foreground">No arbitrary URL is accepted.</p>
+            <p className="eyebrow">Destination</p>
+            <p className="mt-1 font-medium">gBox demo destination</p>
+            <p className="text-xs text-muted-foreground">This demo cannot send anywhere else.</p>
           </section>
           <Separator />
           <section>
-            <p className="eyebrow">Linked evidence</p>
+            <p className="eyebrow">Evidence status</p>
             <div className="mt-2 flex flex-wrap gap-1.5">
               {linkedClaims.length
                 ? linkedClaims.map((claim) => <VerdictBadge key={claim.id} state={claim.state} />)
-                : <Badge variant="outline">No extracted claims</Badge>}
+                : <Badge variant="outline">No supporting claims found</Badge>}
             </div>
           </section>
           <section>
-            <p className="eyebrow">Report preview</p>
+            <p className="eyebrow">What will be sent</p>
             <ScrollArea className="report-preview mt-2 h-52">
               <p className="whitespace-pre-wrap p-4 text-sm leading-relaxed">{action.reportMarkdown}</p>
             </ScrollArea>

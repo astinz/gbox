@@ -1,10 +1,8 @@
 import {
-  BinaryIcon,
   BlocksIcon,
-  CableIcon,
   CheckCircle2Icon,
   CircleAlertIcon,
-  Link2Icon,
+  BellIcon,
 } from "lucide-react";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -28,25 +26,24 @@ export function StatusBoard({
   onNotchChange,
 }: Props) {
   const checks = [
-    { label: "Codex CLI", value: status.codexSupported, icon: BinaryIcon, detail: status.codexVersion ?? "not found" },
-    { label: "App Server", value: status.appServerConnected, icon: CableIcon, detail: status.appServerConnected ? "JSONL connected" : "starts on first live task" },
-    { label: "Control plugin", value: status.pluginInstalled, icon: BlocksIcon, detail: status.pluginInstalled ? "installed" : "install from local marketplace" },
-    { label: "Trusted hooks", value: status.hooksTrusted, icon: Link2Icon, detail: status.hooksTrusted ? "trusted" : "review with /hooks" },
+    { label: "Codex", value: status.codexSupported, icon: BlocksIcon, detail: status.codexSupported ? "available" : "needs setup" },
+    { label: "Codex connection", value: status.pluginInstalled && status.hooksTrusted, icon: CheckCircle2Icon, detail: status.pluginInstalled && status.hooksTrusted ? "ready" : "needs review" },
     {
       label: "Evidence sources",
       value: status.evidenceSourcesReady,
       icon: CheckCircle2Icon,
-      detail: status.evidenceSourcesReady ? `${status.evidenceSourceCount} available` : "connect App Server to discover",
+      detail: status.evidenceSourcesReady ? `${status.evidenceSourceCount} available` : "none available",
     },
+    { label: "Alerts", value: status.notificationsAvailable, icon: BellIcon, detail: status.notificationsAvailable ? "available" : "shown in gBox" },
   ];
 
   return (
     <Card className="status-card h-full">
       <CardHeader className="border-b">
         <div className="flex items-center justify-between gap-3">
-          <CardTitle>Control plane</CardTitle>
+          <CardTitle>Readiness</CardTitle>
           <Badge variant={status.replayMode ? "secondary" : "outline"}>
-            {status.replayMode ? "Replay" : "Live"}
+            {status.replayMode ? "Demo" : "Active"}
           </Badge>
         </div>
       </CardHeader>
@@ -65,13 +62,13 @@ export function StatusBoard({
         </div>
         <Field orientation="horizontal" className="consent-field">
           <FieldContent>
-            <FieldTitle>Global Codex observation</FieldTitle>
+            <FieldTitle>Monitor Codex research</FieldTitle>
             <FieldDescription>
-              When enabled, trusted Stop hooks forward final assistant messages for claim extraction.
+              Check important claims after each completed response.
             </FieldDescription>
           </FieldContent>
           <Switch
-            aria-label="Global Codex observation"
+            aria-label="Monitor Codex research"
             checked={status.globalObservation}
             onCheckedChange={onObservationChange}
           />
@@ -79,13 +76,13 @@ export function StatusBoard({
         {status.notchAvailable ? (
           <Field orientation="horizontal" className="consent-field">
             <FieldContent>
-              <FieldTitle>Observation notch</FieldTitle>
+              <FieldTitle>Top-of-screen updates</FieldTitle>
               <FieldDescription>
-                Shows capture, verification progress, and verdicts at the top of the macOS display.
+                Show new checks and results around the Mac camera area.
               </FieldDescription>
             </FieldContent>
             <Switch
-              aria-label="Observation notch"
+              aria-label="Top-of-screen updates"
               checked={status.notchEnabled}
               onCheckedChange={onNotchChange}
             />
@@ -93,13 +90,13 @@ export function StatusBoard({
         ) : null}
         <Field orientation="horizontal" className="consent-field">
           <FieldContent>
-            <FieldTitle>Launch gBox at login</FieldTitle>
+            <FieldTitle>Open gBox at login</FieldTitle>
             <FieldDescription>
-              Starts the background observer with its window hidden. This setting is independent of observation.
+              Keep monitoring available after restart without opening the main window.
             </FieldDescription>
           </FieldContent>
           <Switch
-            aria-label="Launch gBox at login"
+            aria-label="Open gBox at login"
             checked={status.launchAtLogin}
             onCheckedChange={onLaunchAtLoginChange}
           />
@@ -107,22 +104,22 @@ export function StatusBoard({
         {status.globalObservation && !status.notificationsAvailable && (
           <Alert>
             <CircleAlertIcon />
-            <AlertTitle>Native notifications unavailable</AlertTitle>
+            <AlertTitle>System alerts unavailable</AlertTitle>
             <AlertDescription>
-              Observation remains active. Completed checks will stay visible in gBox.
+              Monitoring remains active. Completed checks will stay visible in gBox.
             </AlertDescription>
           </Alert>
         )}
         {!status.receiptChainValid && (
           <Alert variant="destructive">
             <CircleAlertIcon />
-            <AlertTitle>Receipt chain integrity failure</AlertTitle>
-            <AlertDescription>Stored receipt hashes no longer form a valid chain.</AlertDescription>
+            <AlertTitle>Decision history needs attention</AlertTitle>
+            <AlertDescription>Some saved decision records may have changed.</AlertDescription>
           </Alert>
         )}
         {status.diagnostic && (
           <p className="rounded-md bg-muted px-3 py-2 text-xs leading-relaxed text-muted-foreground">
-            {status.diagnostic}
+            gBox needs attention. Restart the app or use the guided demo while the connection recovers.
           </p>
         )}
       </CardContent>

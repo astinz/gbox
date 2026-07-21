@@ -5,7 +5,7 @@ import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
 import type { Claim, DashboardSnapshot, Observation } from "@/types/gbox";
 
-export type DashboardDetail = "claims" | "events" | "actions" | "tools";
+export type DashboardDetail = "claims" | "actions" | "tools";
 
 type Props = {
   snapshot: DashboardSnapshot;
@@ -24,17 +24,17 @@ export function DashboardOverview({
   const posture = observationPosture(snapshot);
 
   return (
-    <section className="dashboard-overview" aria-label="Codex observation overview">
+    <section className="dashboard-overview" aria-label="Research review overview">
       <Card className="observation-card">
         <CardHeader className="observation-card__header">
           <div>
-            <p className="eyebrow">Background claim observation</p>
+            <p className="eyebrow">Research monitoring</p>
             <h2 className="observation-status">{posture.label}</h2>
             <p className="observation-status__detail">{posture.detail}</p>
           </div>
-          <div className="queue-count" aria-label={`${snapshot.observationQueueDepth} observations queued`}>
+          <div className="queue-count" aria-label={`${snapshot.observationQueueDepth} checks waiting`}>
             <strong>{snapshot.observationQueueDepth}</strong>
-            <span>queued</span>
+            <span>waiting</span>
           </div>
         </CardHeader>
         <CardContent className="observation-results">
@@ -76,19 +76,18 @@ export function DashboardOverview({
           ) : (
             <Empty className="min-h-48 border-t">
               <EmptyHeader>
-                <EmptyTitle>No observed claims yet</EmptyTitle>
+                <EmptyTitle>No claims reviewed yet</EmptyTitle>
                 <EmptyDescription>
-                  Enable global observation, then finish an ordinary Codex research turn.
+                  Turn on research monitoring, then complete a research response in Codex.
                 </EmptyDescription>
               </EmptyHeader>
             </Empty>
           )}
         </CardContent>
         <CardFooter className="observation-card__actions">
-          <Button variant="outline" size="sm" onClick={() => onOpenDetail("claims")}>Claim ledger</Button>
-          <Button variant="outline" size="sm" onClick={() => onOpenDetail("events")}>Events</Button>
-          <Button variant="outline" size="sm" onClick={() => onOpenDetail("actions")}>Actions & receipts</Button>
-          <Button variant="ghost" size="sm" onClick={() => onOpenDetail("tools")}>Test tools</Button>
+          <Button variant="outline" size="sm" onClick={() => onOpenDetail("claims")}>All claims</Button>
+          <Button variant="outline" size="sm" onClick={() => onOpenDetail("actions")}>Decisions</Button>
+          <Button variant="ghost" size="sm" onClick={() => onOpenDetail("tools")}>Guided demo</Button>
         </CardFooter>
       </Card>
     </section>
@@ -97,19 +96,19 @@ export function DashboardOverview({
 
 function observationPosture(snapshot: DashboardSnapshot): { label: string; detail: string } {
   if (!snapshot.status.globalObservation) {
-    return { label: "Off", detail: "Enable observation in Settings to watch trusted Codex turns." };
+    return { label: "Monitoring off", detail: "Turn on research monitoring in Settings when you are ready." };
   }
   if (!snapshot.status.observationWorkerHealthy) {
-    return { label: "Needs attention", detail: "The observation worker is unavailable." };
+    return { label: "Needs attention", detail: "Background checks are temporarily unavailable." };
   }
   if (snapshot.observationQueueDepth > 0) {
-    return { label: "Processing", detail: "gBox is extracting and checking completed Codex research." };
+    return { label: "Checking research", detail: "gBox is reviewing new claims against available evidence." };
   }
   const latest = snapshot.recentObservations[0];
   if (latest && (latest.verdictCounts.contradicted > 0 || latest.verdictCounts.unverifiable > 0)) {
-    return { label: "Needs attention", detail: "The latest turn contains a contradiction or unresolved claim." };
+    return { label: "Needs attention", detail: "The latest research contains a conflict or an unresolved claim." };
   }
-  return { label: "Watching Codex", detail: "Trusted Stop hooks are ready for the next completed turn." };
+  return { label: "Ready", detail: "gBox is ready to review your next completed research response." };
 }
 
 function primaryClaim(observation: Observation, claims: Claim[]): Claim | undefined {

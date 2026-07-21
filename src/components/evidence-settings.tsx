@@ -36,7 +36,7 @@ export function EvidenceSettingsPanel({ settings, sources, busy, onSave }: Props
   function save() {
     try {
       const parsed = JSON.parse(serversJson) as unknown;
-      if (!Array.isArray(parsed)) throw new Error("gBox MCP configuration must be a JSON array.");
+      if (!Array.isArray(parsed)) throw new Error("Additional source connections must be provided as a list.");
       setError(undefined);
       onSave({
         useCodexMcpConfig,
@@ -53,9 +53,9 @@ export function EvidenceSettingsPanel({ settings, sources, busy, onSave }: Props
       <CardHeader className="border-b">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <CardTitle>Evidence sources</CardTitle>
+            <CardTitle>Sources used for checks</CardTitle>
             <CardDescription className="mt-1">
-              gBox routes claims only to MCP tools explicitly marked read-only, or to Codex web search.
+              Choose where gBox looks for supporting or conflicting evidence.
             </CardDescription>
           </div>
           <div className="flex flex-wrap gap-1.5">
@@ -73,50 +73,53 @@ export function EvidenceSettingsPanel({ settings, sources, busy, onSave }: Props
         <div className="flex flex-col gap-4">
           <Field orientation="horizontal" className="consent-field">
             <FieldContent>
-              <FieldTitle>Use existing Codex MCP configuration</FieldTitle>
+              <FieldTitle>Use sources already connected to Codex</FieldTitle>
               <FieldDescription>
-                Include MCP servers and plugin-provided tools already available to this Codex installation.
+                Include trusted sources that are already available in Codex.
               </FieldDescription>
             </FieldContent>
             <Switch
-              aria-label="Use existing Codex MCP configuration"
+              aria-label="Use sources already connected to Codex"
               checked={useCodexMcpConfig}
               onCheckedChange={setUseCodexMcpConfig}
             />
           </Field>
           <Field>
-            <FieldLabel htmlFor="web-search-mode">Web-search policy</FieldLabel>
+            <FieldLabel htmlFor="web-search-mode">Public web sources</FieldLabel>
             <select
               id="web-search-mode"
               className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
               value={webSearchMode}
               onChange={(event) => setWebSearchMode(event.target.value as WebSearchMode)}
             >
-              <option value="disabled">Disabled</option>
-              <option value="cached">Cached index</option>
-              <option value="live">Live web</option>
+              <option value="disabled">Off</option>
+              <option value="cached">Saved results</option>
+              <option value="live">Current web</option>
             </select>
             <FieldDescription>
-              Cached is the safer default. Live results are fresher but increase prompt-injection exposure.
+              Saved results are the safer default. Current web results may be newer but require more caution.
             </FieldDescription>
           </Field>
         </div>
-        <Field data-invalid={Boolean(error)}>
-          <FieldLabel htmlFor="mcp-config">gBox-specific MCP servers (JSON)</FieldLabel>
-          <Textarea
-            id="mcp-config"
-            className="min-h-44 font-mono text-xs"
-            value={serversJson}
-            onChange={(event) => setServersJson(event.target.value)}
-            spellCheck={false}
-            aria-invalid={Boolean(error)}
-          />
-          <FieldDescription>
-            Supports stdio and HTTP transports. Reference secret environment-variable names; never put secret values in this JSON.
-          </FieldDescription>
-          {error && <p className="text-xs text-destructive">{error}</p>}
-          <div><Button size="sm" onClick={save} disabled={busy}><SaveIcon data-icon="inline-start" />Save and discover</Button></div>
-        </Field>
+        <details className="rounded-lg border px-4 py-3">
+          <summary className="cursor-pointer text-sm font-medium">Managed source setup</summary>
+          <Field data-invalid={Boolean(error)} className="mt-4">
+            <FieldLabel htmlFor="mcp-config">Additional source connections</FieldLabel>
+            <Textarea
+              id="mcp-config"
+              className="min-h-44 font-mono text-xs"
+              value={serversJson}
+              onChange={(event) => setServersJson(event.target.value)}
+              spellCheck={false}
+              aria-invalid={Boolean(error)}
+            />
+            <FieldDescription>
+              For managed setups. Reference secret environment-variable names and never enter secret values directly.
+            </FieldDescription>
+            {error && <p className="text-xs text-destructive">{error}</p>}
+            <div><Button size="sm" onClick={save} disabled={busy}><SaveIcon data-icon="inline-start" />Save sources</Button></div>
+          </Field>
+        </details>
       </CardContent>
     </Card>
   );
