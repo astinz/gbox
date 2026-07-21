@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>gBox — OpenAI Build Week submission</title>
+    <style>
+      body { max-width: 760px; margin: 48px auto; padding: 0 24px; font: 17px/1.6 system-ui, sans-serif; color: #191714; }
+      h1, h2 { line-height: 1.15; }
+      code { background: #f1eee8; padding: 2px 5px; border-radius: 4px; }
+      .field { color: #655f57; font-size: 14px; text-transform: uppercase; letter-spacing: .08em; }
+    </style>
+  </head>
+  <body>
+    <p class="field">OpenAI Build Week · Developer Tools</p>
+    <h1>gBox</h1>
+    <p><strong>A second set of eyes for Codex claims, with human approval before action.</strong></p>
+
+    <h2>What it does</h2>
+    <p>Agents can make confident claims that later drive emails, webhooks, deployments, or other actions. The person using the agent often has to choose between trusting the answer and manually checking every detail.</p>
+    <p>gBox works alongside ordinary Codex tasks. After a response completes, it extracts material claims, selects an eligible read-only MCP or web source, retrieves evidence, and reports each claim as Verified, Contradicted, or Unverifiable. A native notification and optional macOS camera-notch surface bring exceptions forward without replacing or interrupting Codex.</p>
+    <p>Review opens a dossier showing exactly what gBox understood, which source it selected, the raw evidence, comparison method, and any failures. Contradictions can be copied back as an evidence-backed correction. When the bundled protected webhook is requested, gBox requires explicit human approval and records the claim, evidence, decision, and exactly-once result in a local hash-chained receipt.</p>
+
+    <h2>How it was built</h2>
+    <p>gBox is a macOS-first Tauri application with a Rust core, React and TypeScript interface, SQLite ledger, real Codex App Server supervision, trusted Codex plugin hooks, and MCP integrations. Passive observation is non-blocking; the protected action fails closed. The verifier is generic: it can plan over eligible MCP tools or web sources rather than being tied to the seeded company example.</p>
+
+    <h2>Codex and GPT-5.6</h2>
+    <p>Codex with GPT-5.6 was the primary build environment. It helped design the trust boundaries, implement the Rust and TypeScript integrations, create regression coverage, iterate on the interface from screenshots, and run the live macOS end-to-end demonstration. The final test uses Codex computer control to prepare gBox, open an ordinary task, produce a deliberate false claim, and keep that task visible while gBox reports the contradiction.</p>
+
+    <h2>Try it</h2>
+    <p>On macOS, clone the public repository and run <code>npm ci</code>, <code>npm run build:mcp</code>, then <code>npm run tauri dev</code>. Open Test tools and start Deterministic replay. Replay requires no Codex authentication or external network and exercises all three verdicts, the real approval dialog, loopback delivery, persistence, and receipt verification.</p>
+
+    <h2>Links</h2>
+    <ul>
+      <li><a href="https://youtu.be/8Cy0IhPu_m4">Demo video</a></li>
+      <li><a href="https://github.com/astinz/gbox">Source and setup</a></li>
+      <li>Primary Codex feedback task: <code>019f7097-128f-7901-94b5-a7cefd3c6097</code></li>
+    </ul>
+
+    <h2>Current boundary</h2>
+    <p>V1 observes local Codex surfaces that trust the gBox plugin and protects only the fixed bundled test webhook. The company data is synthetic, and receipts are locally hash-chained rather than externally notarized.</p>
+  </body>
+</html>
