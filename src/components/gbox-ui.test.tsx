@@ -230,7 +230,7 @@ describe("gBox interface", () => {
         onNotchChange={vi.fn()}
       />,
     );
-    fireEvent.click(screen.getByRole("switch", { name: "Monitor Codex research" }));
+    fireEvent.click(screen.getByRole("switch", { name: "Monitor Codex activity" }));
     expect(onChange).toHaveBeenCalledWith(true, expect.anything());
   });
 
@@ -290,7 +290,7 @@ describe("gBox interface", () => {
         onReplay={vi.fn()}
       />,
     );
-    expect(screen.getByRole("region", { name: "Research progress" })).toHaveAttribute("aria-busy", "true");
+    expect(screen.getByRole("region", { name: "Task progress" })).toHaveAttribute("aria-busy", "true");
     expect(screen.getByText("Connecting to Codex")).toBeInTheDocument();
     expect(screen.getByText(/Private reasoning is never displayed/)).toBeInTheDocument();
     expect(document.querySelector('[data-orb-state="listening"]')).toHaveAttribute("data-paused", "false");
@@ -334,7 +334,7 @@ describe("gBox interface", () => {
       />,
     );
     expect(screen.getByRole("heading", { name: "Settings" })).toBeInTheDocument();
-    expect(screen.getByRole("switch", { name: "Monitor Codex research" })).toBeInTheDocument();
+    expect(screen.getByRole("switch", { name: "Monitor Codex activity" })).toBeInTheDocument();
     expect(screen.getAllByText("Sources used for checks")).not.toHaveLength(0);
   });
 

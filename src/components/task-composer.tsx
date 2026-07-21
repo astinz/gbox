@@ -55,7 +55,7 @@ export function TaskComposer({
       <CardHeader>
         <div className="flex items-start justify-between gap-4">
           <div>
-            <CardTitle>{sessionId ? "Continue research" : "Start guided research"}</CardTitle>
+            <CardTitle>{sessionId ? "Continue task" : "Start guided task"}</CardTitle>
             <CardDescription className="mt-1">
               Uses your existing Codex sign-in and cannot change project files.
             </CardDescription>
@@ -67,18 +67,18 @@ export function TaskComposer({
         <FieldGroup className="gap-3">
           {!sessionId && (
             <Field>
-              <FieldLabel htmlFor="workspace">Research folder</FieldLabel>
+              <FieldLabel htmlFor="workspace">Project folder</FieldLabel>
               <Input id="workspace" value={cwd} onChange={(event) => setCwd(event.target.value)} placeholder="Current project" />
             </Field>
           )}
           <Field>
-            <FieldLabel htmlFor="prompt">Research request</FieldLabel>
+            <FieldLabel htmlFor="prompt">Instruction</FieldLabel>
             <Textarea id="prompt" value={prompt} onChange={(event) => setPrompt(event.target.value)} rows={4} />
           </Field>
           <div className="flex flex-wrap items-center gap-2">
             <Button onClick={submit} disabled={busy || !prompt.trim()}>
               {busy ? <Spinner data-icon="inline-start" /> : <SendIcon data-icon="inline-start" />}
-              {sessionId ? "Continue" : "Start research"}
+              {sessionId ? "Continue" : "Start task"}
             </Button>
             <Button variant="outline" onClick={onReplay} disabled={busy}>
               <PlayIcon data-icon="inline-start" /> Run guided demo

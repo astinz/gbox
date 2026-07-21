@@ -28,7 +28,7 @@ export function ClaimLedger({ claims, evidence, onSelectClaim }: Props) {
     <div className="panel-surface claim-index">
         <div className="panel-toolbar">
           <div>
-            <p className="eyebrow">Research review</p>
+            <p className="eyebrow">Claim review</p>
             <h2 className="panel-title">All claims</h2>
           </div>
           <ToggleGroup
@@ -50,7 +50,7 @@ export function ClaimLedger({ claims, evidence, onSelectClaim }: Props) {
             <EmptyHeader>
               <EmptyMedia variant="icon"><CircleHelpIcon /></EmptyMedia>
               <EmptyTitle>No claims in this view</EmptyTitle>
-              <EmptyDescription>Run the guided demo or complete research in Codex to see reviewed claims.</EmptyDescription>
+              <EmptyDescription>Run the guided demo or complete a response in Codex to see reviewed claims.</EmptyDescription>
             </EmptyHeader>
           </Empty>
         ) : (

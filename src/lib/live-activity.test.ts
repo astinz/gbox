@@ -45,7 +45,7 @@ describe("live activity", () => {
       event("turn", "turn/started", { turn: { id: "turn-1" } }),
     ], { busy: false, startedAt });
     expect(JSON.stringify(activity)).not.toContain("private hidden reasoning");
-    expect(activity.items.map((item) => item.label)).toEqual(["Research started"]);
+    expect(activity.items.map((item) => item.label)).toEqual(["Task started"]);
   });
 
   it("presents connected-source checks and completion in plain language", () => {
@@ -74,7 +74,7 @@ describe("live activity", () => {
     const activity = buildLiveActivity(events, { busy: false, startedAt });
     expect(activity.phase).toBe("complete");
     expect(activity.items.some((item) => item.label === "Checking a connected source")).toBe(true);
-    expect(activity.items.some((item) => item.label === "Research complete")).toBe(true);
+    expect(activity.items.some((item) => item.label === "Task complete")).toBe(true);
   });
 
   it("does not let a late delta overwrite a completed response", () => {

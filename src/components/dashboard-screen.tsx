@@ -125,7 +125,7 @@ function dialogTitle(view?: OpenView): string {
 function dialogDescription(view?: OpenView, claim?: Claim): string {
   if (view?.kind === "claims") return "Filter reviewed claims and open the evidence behind each result.";
   if (view?.kind === "actions") return "See what was approved or denied and confirm the decision history is intact.";
-  if (view?.kind === "tools") return "Run a guided example or start research with gBox.";
+  if (view?.kind === "tools") return "Run a guided example or start a Codex task with gBox.";
   if (view?.kind === "claim") return claim?.statement ?? "See the evidence behind this result.";
   return "More information.";
 }

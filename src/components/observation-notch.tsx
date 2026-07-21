@@ -32,7 +32,7 @@ export function ObservationNotch({
   const verdictLabel = previewingLatest
     ? phaseLabel("completed", observation)
     : label;
-  const excerpt = observation?.messageExcerpt ?? "Waiting for completed research";
+  const excerpt = observation?.messageExcerpt ?? "Waiting for a completed response";
   const orb = orbForNotch(phase);
   const active = phase === "captured" || phase === "checking";
 
@@ -42,7 +42,7 @@ export function ObservationNotch({
       data-expanded={expanded}
       data-phase={phase}
       data-verdict={verdict}
-      aria-label="gBox research status"
+      aria-label="gBox claim status"
       aria-live="polite"
     >
       {expanded ? (
@@ -57,7 +57,7 @@ export function ObservationNotch({
           </header>
           <div className="observation-notch__body">
             <div className="observation-notch__capture">
-              <span>{previewingLatest ? "Latest research check" : "Research received"}</span>
+              <span>{previewingLatest ? "Latest claim check" : "Response received"}</span>
               <strong>{excerpt}</strong>
               <small>{detailLine(phase, previewingLatest)}</small>
             </div>
@@ -94,7 +94,7 @@ export function ObservationNotch({
 function detailLine(phase: NotchPhase, previewingLatest: boolean) {
   if (previewingLatest) return "Open gBox to review the evidence";
   if (phase === "checking") return "Reviewing available evidence";
-  if (phase === "captured") return "Research ready for review";
+  if (phase === "captured") return "Response ready for review";
   if (phase === "failed") return "Open gBox to see what needs attention";
   return "Review complete";
 }

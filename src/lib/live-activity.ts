@@ -72,12 +72,12 @@ function applyEvent(items: Map<string, LiveActivityItem>, event: CodexEvent) {
   const itemId = stringValue(item.id) ?? stringValue(payload.itemId) ?? event.id;
 
   if (event.method === "thread/started") {
-    upsert(items, `thread:${event.sessionId ?? itemId}`, "Codex is ready", "Your secure research session is available.", "complete", event);
+    upsert(items, `thread:${event.sessionId ?? itemId}`, "Codex is ready", "Your Codex session is available.", "complete", event);
     return;
   }
   if (event.method === "turn/started") {
     const turnId = stringValue(asRecord(payload.turn).id) ?? stringValue(payload.turnId) ?? itemId;
-    upsert(items, `turn:${turnId}`, "Research started", "Waiting for the first progress update.", "active", event);
+    upsert(items, `turn:${turnId}`, "Task started", "Waiting for the first progress update.", "active", event);
     return;
   }
   if (event.method === "turn/completed") {
@@ -85,7 +85,7 @@ function applyEvent(items: Map<string, LiveActivityItem>, event: CodexEvent) {
     const turnId = stringValue(turnRecord.id) ?? stringValue(payload.turnId) ?? itemId;
     const status = stringValue(turnRecord.status);
     const state = status === "failed" ? "failed" : "complete";
-    upsert(items, `turn:${turnId}`, state === "failed" ? "Research stopped" : "Research complete", status === "failed" ? "Codex could not complete the request." : "The response is ready.", state, event);
+    upsert(items, `turn:${turnId}`, state === "failed" ? "Task stopped" : "Task complete", status === "failed" ? "Codex could not complete the request." : "The response is ready.", state, event);
     return;
   }
 
@@ -219,7 +219,7 @@ function lastMatching(
 
 function connectingDetail(source: LiveActivitySource): string {
   return source === "replay"
-    ? "Loading a guided example with recorded research."
+    ? "Loading a guided example with recorded activity."
     : "Connecting securely to Codex.";
 }
 

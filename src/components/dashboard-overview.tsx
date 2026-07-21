@@ -27,7 +27,7 @@ export function DashboardOverview({
   const orb = orbForDashboard(snapshot);
 
   return (
-    <section className="dashboard-overview" aria-label="Research review overview">
+    <section className="dashboard-overview" aria-label="Claim verification overview">
       <Card className="observation-card">
         <CardHeader className="observation-card__header">
           <div className="observation-card__identity">
@@ -35,7 +35,7 @@ export function DashboardOverview({
               <GboxOrb {...orb} size={64} />
             </span>
             <div>
-              <p className="eyebrow">Research monitoring</p>
+              <p className="eyebrow">Claim monitoring</p>
               <h2 className="observation-status">{posture.label}</h2>
               <p className="observation-status__detail">{posture.detail}</p>
             </div>
@@ -86,7 +86,7 @@ export function DashboardOverview({
               <EmptyHeader>
                 <EmptyTitle>No claims reviewed yet</EmptyTitle>
                 <EmptyDescription>
-                  Turn on research monitoring, then complete a research response in Codex.
+                  Turn on claim monitoring, then complete a response in Codex.
                 </EmptyDescription>
               </EmptyHeader>
             </Empty>
@@ -104,19 +104,19 @@ export function DashboardOverview({
 
 function observationPosture(snapshot: DashboardSnapshot): { label: string; detail: string } {
   if (!snapshot.status.globalObservation) {
-    return { label: "Monitoring off", detail: "Turn on research monitoring in Settings when you are ready." };
+    return { label: "Monitoring off", detail: "Turn on claim monitoring in Settings when you are ready." };
   }
   if (!snapshot.status.observationWorkerHealthy) {
     return { label: "Needs attention", detail: "Background checks are temporarily unavailable." };
   }
   if (snapshot.observationQueueDepth > 0) {
-    return { label: "Checking research", detail: "gBox is reviewing new claims against available evidence." };
+    return { label: "Checking claims", detail: "gBox is comparing new claims with available evidence." };
   }
   const latest = snapshot.recentObservations[0];
   if (latest && (latest.verdictCounts.contradicted > 0 || latest.verdictCounts.unverifiable > 0)) {
-    return { label: "Needs attention", detail: "The latest research contains a conflict or an unresolved claim." };
+    return { label: "Needs attention", detail: "The latest response contains a conflict or an unresolved claim." };
   }
-  return { label: "Ready", detail: "gBox is ready to review your next completed research response." };
+  return { label: "Ready", detail: "gBox is ready to check your next completed response." };
 }
 
 function primaryClaim(observation: Observation, claims: Claim[]): Claim | undefined {

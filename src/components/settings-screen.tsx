@@ -26,7 +26,7 @@ export function SettingsScreen({
           <p className="eyebrow">Preferences</p>
           <h1>Settings</h1>
         </div>
-        <p>Choose how gBox monitors research, alerts you, and finds evidence.</p>
+        <p>Choose how gBox checks claims, alerts you, and finds evidence.</p>
       </section>
       <section className="settings-layout">
         <StatusBoard

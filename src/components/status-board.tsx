@@ -62,13 +62,13 @@ export function StatusBoard({
         </div>
         <Field orientation="horizontal" className="consent-field">
           <FieldContent>
-            <FieldTitle>Monitor Codex research</FieldTitle>
+            <FieldTitle>Monitor Codex activity</FieldTitle>
             <FieldDescription>
               Check important claims after each completed response.
             </FieldDescription>
           </FieldContent>
           <Switch
-            aria-label="Monitor Codex research"
+            aria-label="Monitor Codex activity"
             checked={status.globalObservation}
             onCheckedChange={onObservationChange}
           />

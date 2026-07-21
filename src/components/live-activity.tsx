@@ -27,11 +27,11 @@ export function LiveActivity({ activity }: { activity: LiveActivityModel }) {
       className="live-activity"
       aria-live="polite"
       aria-busy={working}
-      aria-label="Research progress"
+      aria-label="Task progress"
       role="region"
     >
       <CardHeader className="border-b">
-        <CardTitle>Research progress</CardTitle>
+        <CardTitle>Task progress</CardTitle>
         <CardDescription>What gBox can safely show while your request is running.</CardDescription>
         <CardAction>
           <Badge variant={activity.phase === "failed" ? "destructive" : working ? "secondary" : "outline"}>

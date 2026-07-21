@@ -30,13 +30,13 @@ describe("ObservationNotch", () => {
       />,
     );
 
-    expect(screen.getByText("Research received")).toBeInTheDocument();
+    expect(screen.getByText("Response received")).toBeInTheDocument();
     expect(screen.getAllByText("Contradicted")).toHaveLength(2);
     expect(screen.getByText(contradicted.messageExcerpt)).toBeInTheDocument();
     expect(document.querySelector('[data-orb-state="solving"]')).toHaveAttribute("data-paused", "true");
   });
 
-  it("shows a compact shaping signal when new research is captured", () => {
+  it("shows a compact shaping signal when a response is captured", () => {
     render(
       <ObservationNotch
         phase="captured"
@@ -77,7 +77,7 @@ describe("ObservationNotch", () => {
     );
 
     expect(screen.getByText("Latest result")).toBeInTheDocument();
-    expect(screen.getByText("Latest research check")).toBeInTheDocument();
+    expect(screen.getByText("Latest claim check")).toBeInTheDocument();
     expect(screen.getByText("Contradicted")).toBeInTheDocument();
   });
 });
