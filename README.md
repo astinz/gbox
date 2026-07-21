@@ -10,6 +10,7 @@
 
 <p align="center">
   <a href="https://youtu.be/8Cy0IhPu_m4">Watch the 2:33 demo</a> ·
+  <a href="https://github.com/astinz/gbox/releases/download/v0.1.0/gbox-v0.1.0-macos-arm64.zip">Download for macOS</a> ·
   <a href="#judge-fast-path">Judge fast path</a> ·
   <a href="#how-it-works">How it works</a> ·
   <a href="LICENSE">Apache 2.0</a>
@@ -25,11 +26,13 @@ When a claim leads to the bundled protected webhook, gBox requires an explicit h
 ## Table of contents
 
 - [Demo](#demo)
+- [Install the macOS app](#install-the-macos-app)
 - [Judge fast path](#judge-fast-path)
 - [What is included](#what-is-included)
 - [How it works](#how-it-works)
 - [Live Codex setup](#live-codex-setup)
 - [Sample claim](#sample-claim)
+- [Build from source](#build-from-source)
 - [Built with Codex and GPT-5.6](#built-with-codex-and-gpt-56)
 - [Development checks](#development-checks)
 - [Current boundaries](#current-boundaries)
@@ -40,27 +43,20 @@ When a claim leads to the bundled protected webhook, gBox requires an explicit h
 
 The demo shows an ordinary Codex task making a false company claim, gBox checking it in the background, the macOS notch reporting the contradiction, the full evidence dossier, a correction handoff, and a protected action held for approval.
 
+## Install the macOS app
+
+The runnable release supports **Apple Silicon Macs** and does not require Rust, Node.js, or a source build.
+
+1. Download [gBox v0.1.0 for macOS](https://github.com/astinz/gbox/releases/download/v0.1.0/gbox-v0.1.0-macos-arm64.zip).
+2. Unzip it and drag `gbox.app` into **Applications**.
+3. On first launch, Control-click `gbox.app`, choose **Open**, then confirm **Open**.
+4. Open **Test tools** and start **Deterministic replay**.
+
+The app is an unsigned, ad-hoc-signed hackathon build. The first-launch step above opens only gBox; do not disable Gatekeeper globally. The release also includes a [SHA-256 checksum](https://github.com/astinz/gbox/releases/download/v0.1.0/gbox-v0.1.0-macos-arm64.zip.sha256).
+
 ## Judge fast path
 
-Supported platform: **macOS**. Replay mode needs no Codex authentication or external network access.
-
-### Prerequisites
-
-- macOS with Xcode Command Line Tools
-- Stable Rust
-- Node.js 20+ and npm
-
-### Run the deterministic replay
-
-```bash
-git clone https://github.com/astinz/gbox.git
-cd gbox
-npm ci
-npm run build:mcp
-npm run tauri dev
-```
-
-In gBox, open **Test tools** and choose **Deterministic replay**. It uses seeded data to produce one verified, one contradicted, and one unverifiable claim, then opens the real approval dialog.
+Install the runnable release above, then choose **Test tools → Deterministic replay**. Replay needs no Codex authentication, development toolchain, credentials, or external network access. It uses seeded data to produce one verified, one contradicted, and one unverifiable claim, then opens the real approval dialog.
 
 - **Deny** results in zero webhook deliveries.
 - **Approve** results in one loopback POST and one stored receipt.
@@ -138,6 +134,18 @@ Open a normal Codex task outside gBox and send:
 > Use this supplied internal note as your only source: “Acme had 42 production database users in 2026-Q2.” Answer how many production database users Acme had in 2026-Q2 in one factual sentence. Do not call tools.
 
 The seeded MCP record contains `17`. gBox should report one **Contradicted** claim without changing the Codex task. Choose **Review** to inspect the `42` versus `17` evidence, then use **Copy correction for Codex** for an evidence-backed handoff.
+
+## Build from source
+
+Source builds require macOS with Xcode Command Line Tools, stable Rust, Node.js 20+, and npm.
+
+```bash
+git clone https://github.com/astinz/gbox.git
+cd gbox
+npm ci
+npm run build:mcp
+npm run tauri dev
+```
 
 ## Built with Codex and GPT-5.6
 

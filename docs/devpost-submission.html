@@ -28,12 +28,13 @@
     <p>Codex with GPT-5.6 was the primary build environment. It helped design the trust boundaries, implement the Rust and TypeScript integrations, create regression coverage, iterate on the interface from screenshots, and run the live macOS end-to-end demonstration. The final test uses Codex computer control to prepare gBox, open an ordinary task, produce a deliberate false claim, and keep that task visible while gBox reports the contradiction.</p>
 
     <h2>Try it</h2>
-    <p>On macOS, clone the public repository and run <code>npm ci</code>, <code>npm run build:mcp</code>, then <code>npm run tauri dev</code>. Open Test tools and start Deterministic replay. Replay requires no Codex authentication or external network and exercises all three verdicts, the real approval dialog, loopback delivery, persistence, and receipt verification.</p>
+    <p>On an Apple Silicon Mac, download the <a href="https://github.com/astinz/gbox/releases/tag/v0.1.0">runnable gBox v0.1.0 release</a>, move <code>gbox.app</code> to Applications, then Control-click it and choose Open on first launch. Open Test tools and start Deterministic replay. Replay requires no development toolchain, Codex authentication, credentials, or external network and exercises all three verdicts, the real approval dialog, loopback delivery, persistence, and receipt verification.</p>
 
     <h2>Links</h2>
     <ul>
       <li><a href="https://youtu.be/8Cy0IhPu_m4">Demo video</a></li>
       <li><a href="https://github.com/astinz/gbox">Source and setup</a></li>
+      <li><a href="https://github.com/astinz/gbox/releases/tag/v0.1.0">Runnable macOS release</a></li>
       <li>Primary Codex feedback task: <code>019f7097-128f-7901-94b5-a7cefd3c6097</code></li>
     </ul>
 
